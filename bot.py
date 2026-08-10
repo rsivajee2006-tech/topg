@@ -7,6 +7,7 @@ import time
 import asyncio
 import aiohttp
 from dotenv import load_dotenv
+from typing import Optional
 
 sys.stdout.reconfigure(encoding='utf-8')
 
@@ -30,6 +31,30 @@ bot = commands.Bot(
     help_command=None,
     chunk_guilds_at_startup=True,  # Ensures full member cache on startup
 )
+
+from aiohttp import web
+
+async def health_check(request):
+    return web.Response(text="Bot is running!", status=200)
+
+async def setup_hook():
+    app = web.Application()
+    app.router.add_get('/', health_check)
+    app.router.add_get('/health', health_check)
+    
+    runner = web.AppRunner(app)
+    await runner.setup()
+    
+    port_str = os.getenv("PORT", "8080")
+    try:
+        port = int(port_str) if port_str else 8080
+    except ValueError:
+        port = 8080
+    site = web.TCPSite(runner, '0.0.0.0', port)
+    await site.start()
+    print(f"HTTP server started on port {port}")
+
+bot.setup_hook = setup_hook
 
 CONFIG_FILE = "config.json"
 cooldowns = {}
@@ -98,7 +123,7 @@ def is_owner_or_extra():
         return True
     return commands.check(predicate)
 
-def resolve_vc_placeholders(status: str, guild: discord.Guild | None) -> str:
+def resolve_vc_placeholders(status: str, guild: Optional[discord.Guild]) -> str:
     """Replaces dynamic placeholders in a VC status string.
 
     Supported placeholders:
@@ -253,7 +278,7 @@ async def on_ready():
     except UnicodeEncodeError:
         safe_user = str(bot.user).encode('ascii', 'ignore').decode('ascii')
         print(f"Logged in as {safe_user} (ID: {bot.user.id}) [Unicode characters omitted in console]")
-    print(f"Monitoring mentions for all users")
+    print("Monitoring mentions for all users")
     # Set bot presence / description
     await bot.change_presence(
         activity=discord.Activity(
@@ -405,7 +430,6 @@ def is_owner():
 @is_owner()
 async def dmm_toggle(ctx, state: str):
     """Toggle DM mentions: on or off"""
-    global config
     state = state.lower()
     if state == "on":
         config["enabled"] = True
@@ -434,8 +458,6 @@ async def dmm_setup(ctx):
     """
     Set up a custom DM message interactively.
     """
-    global config
-    
     variables_text = (
         "**Available variables:**\n"
         "`{usermention}` - Mentions the user\n"
@@ -508,7 +530,6 @@ async def dmm_setup(ctx):
 @is_owner()
 async def dmm_reset(ctx):
     """Resets the DM message to the default format."""
-    global config
     if "custom_embed" in config:
         del config["custom_embed"]
     if "custom_message" in config:
@@ -537,7 +558,7 @@ async def add_group(ctx):
     await send_rich_reply(
         ctx,
         "⚠️ Invalid add command",
-        f"Use one of the supported subcommands below.",
+        "Use one of the supported subcommands below.",
         color=0xFFD166,
         fields=[
             ("extraowner", f"`{ctx.prefix}add extraowner <user>`", False),

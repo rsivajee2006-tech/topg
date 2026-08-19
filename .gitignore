@@ -2,4 +2,10 @@
 .env.local
 .env.*.local
 .env.development
-.env.production   
+.env.production
+__pycache__/
+*.py[cod]
+*$py.class
+diff.txt
+status.txt
+extra_owners.json

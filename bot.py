@@ -234,12 +234,8 @@ async def _run_vc_update(dynamic_only: bool):
         try:
             channel_id_int = int(channel_id_str)
             # Find which guild owns this channel
-            guild_for_ch = None
-            for g in bot.guilds:
-                ch = g.get_channel(channel_id_int)
-                if ch is not None:
-                    guild_for_ch = g
-                    break
+            ch = bot.get_channel(channel_id_int)
+            guild_for_ch = ch.guild if ch is not None else None
             resolved_status = resolve_vc_placeholders(status, guild_for_ch)
             success, msg, not_found = await set_voice_status(channel_id_int, resolved_status)
             if not_found:
@@ -690,6 +686,15 @@ async def custom_help(ctx):
         inline=False
     )
 
+    embed.add_field(
+        name="📋 Audit Log",
+        value=(
+            f"`{p}audit logs [limit]` — View recent audit log (bot actions filtered out)\n"
+            f"↳ Default shows 20 entries, max 50"
+        ),
+        inline=False
+    )
+
     DEV_USER_ID = 1495697271071703121
     try:
         dev_user = await ctx.bot.fetch_user(DEV_USER_ID)
@@ -804,6 +809,182 @@ async def add_extraowner_error(ctx, error):
         await ctx.send(f"Missing argument. Usage: `{ctx.prefix}add extraowner <user_id_or_mention>`")
     elif isinstance(error, commands.BadArgument):
         await ctx.send("Invalid user. Provide a valid user ID or mention.")
+    else:
+        await ctx.send(f"An error occurred: {error}")
+
+# --- Audit Log Command ---
+
+@bot.group(name="audit", invoke_without_command=True)
+@is_owner_or_extra()
+async def audit_group(ctx):
+    """Audit log commands."""
+    await send_rich_reply(
+        ctx,
+        "⚠️ Invalid audit command",
+        f"Use `{ctx.prefix}audit logs` to view the server audit log (bot actions filtered out).",
+        color=0xFFD166,
+    )
+
+def _format_audit_action(action: discord.AuditLogAction) -> str:
+    """Return a human-friendly name for an audit-log action."""
+    name = action.name  # e.g. "channel_update"
+    return name.replace("_", " ").title()
+
+@audit_group.command(name="logs")
+@is_owner_or_extra()
+async def audit_logs(ctx, limit: int = 20):
+    """Show recent audit log entries, excluding actions made by this bot.
+
+    Usage: !audit logs [limit]
+    Default limit is 20, max is 50.
+    """
+    if not ctx.guild:
+        return await ctx.send("❌ This command can only be used in a server.")
+
+    # Clamp limit
+    limit = max(1, min(limit, 50))
+
+    # Check bot permissions
+    if not ctx.guild.me.guild_permissions.view_audit_log:
+        return await send_rich_reply(
+            ctx,
+            "❌ Missing Permission",
+            "I need the **View Audit Log** permission to run this command.",
+            color=0xFF6B6B,
+        )
+
+    bot_id = ctx.bot.user.id
+
+    entries = []
+    try:
+        # Fetch more than needed so we still have entries after filtering
+        async for entry in ctx.guild.audit_logs(limit=limit * 3):
+            # ─── Filter out the bot's own actions ───
+            if entry.user and entry.user.id == bot_id:
+                continue
+            entries.append(entry)
+            if len(entries) >= limit:
+                break
+    except discord.Forbidden:
+        return await send_rich_reply(
+            ctx,
+            "❌ Forbidden",
+            "I don't have permission to read the audit log.",
+            color=0xFF6B6B,
+        )
+    except Exception as e:
+        return await send_rich_reply(
+            ctx,
+            "❌ Error",
+            f"Failed to fetch audit logs: {e}",
+            color=0xFF6B6B,
+        )
+
+    if not entries:
+        return await send_rich_reply(
+            ctx,
+            "📋 Audit Log",
+            "No audit log entries found (after filtering out bot actions).",
+            color=0xF7F7F7,
+        )
+
+    # Build paginated embeds (5 entries per page)
+    per_page = 5
+    pages = [entries[i:i + per_page] for i in range(0, len(entries), per_page)]
+    embeds = []
+
+    for page_num, page_entries in enumerate(pages, start=1):
+        embed = discord.Embed(
+            title="📋 Server Audit Log",
+            description=f"Showing **{len(entries)}** recent entries (bot's own actions hidden)",
+            color=0xFFFFFF,
+        )
+        embed.set_author(
+            name=ctx.guild.name,
+            icon_url=ctx.guild.icon.url if ctx.guild.icon else None,
+        )
+
+        for entry in page_entries:
+            action_name = _format_audit_action(entry.action)
+            executor = entry.user.mention if entry.user else "Unknown"
+            target_str = "—"
+            if entry.target:
+                if hasattr(entry.target, "mention"):
+                    target_str = entry.target.mention
+                elif hasattr(entry.target, "name"):
+                    target_str = entry.target.name
+                else:
+                    target_str = str(entry.target)
+
+            reason = entry.reason or "No reason provided"
+            timestamp = discord.utils.format_dt(entry.created_at, style="R")
+
+            value_lines = (
+                f"**Executor:** {executor}\n"
+                f"**Target:** {target_str}\n"
+                f"**Reason:** {reason}\n"
+                f"**When:** {timestamp}"
+            )
+            embed.add_field(name=f"🔹 {action_name}", value=value_lines, inline=False)
+
+        embed.set_footer(
+            text=f"Page {page_num}/{len(pages)} • Bot actions are automatically filtered out",
+            icon_url=ctx.bot.user.display_avatar.url if ctx.bot.user else None,
+        )
+        embeds.append(embed)
+
+    # Send first page; if multiple pages, add navigation reactions
+    message = await ctx.send(embed=embeds[0])
+
+    if len(embeds) > 1:
+        await message.add_reaction("◀️")
+        await message.add_reaction("▶️")
+
+        current_page = 0
+
+        def reaction_check(reaction, user):
+            return (
+                user == ctx.author
+                and reaction.message.id == message.id
+                and str(reaction.emoji) in ("◀️", "▶️")
+            )
+
+        while True:
+            try:
+                reaction, user = await ctx.bot.wait_for(
+                    "reaction_add", timeout=120.0, check=reaction_check
+                )
+                if str(reaction.emoji) == "▶️" and current_page < len(embeds) - 1:
+                    current_page += 1
+                    await message.edit(embed=embeds[current_page])
+                elif str(reaction.emoji) == "◀️" and current_page > 0:
+                    current_page -= 1
+                    await message.edit(embed=embeds[current_page])
+
+                try:
+                    await message.remove_reaction(reaction.emoji, user)
+                except discord.HTTPException:
+                    pass
+            except asyncio.TimeoutError:
+                try:
+                    await message.clear_reactions()
+                except discord.HTTPException:
+                    pass
+                break
+
+@audit_group.error
+async def audit_group_error(ctx, error):
+    if isinstance(error, commands.CheckFailure):
+        await ctx.send("You do not have permission to run this command.")
+    else:
+        await ctx.send(f"An error occurred: {error}")
+
+@audit_logs.error
+async def audit_logs_error(ctx, error):
+    if isinstance(error, commands.CheckFailure):
+        await ctx.send("You do not have permission to run this command.")
+    elif isinstance(error, commands.BadArgument):
+        await ctx.send(f"Invalid limit. Usage: `{ctx.prefix}audit logs [number]`")
     else:
         await ctx.send(f"An error occurred: {error}")
 

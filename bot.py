@@ -19,6 +19,47 @@ PREFIX = os.getenv("PREFIX", ",")
 OWNER_ID = int(os.getenv("OWNER_ID", 0))
 EXTRA_OWNERS_FILE = "extra_owners.json"
 
+# Initialize bot config and prefix resolver
+CONFIG_FILE = "config.json"
+
+def load_config():
+    if not os.path.exists(CONFIG_FILE):
+        return {
+            "enabled": True,
+            "custom_message": None,
+            "vc_statuses": {},
+            "premium_users": [],
+            "premium_servers": [],
+            "no_prefix_users": []
+        }
+    with open(CONFIG_FILE, "r") as f:
+        try:
+            data = json.load(f)
+        except Exception:
+            data = {}
+        if "vc_statuses" not in data:
+            data["vc_statuses"] = {}
+        if "premium_users" not in data:
+            data["premium_users"] = []
+        if "premium_servers" not in data:
+            data["premium_servers"] = []
+        if "no_prefix_users" not in data:
+            data["no_prefix_users"] = []
+        return data
+
+def save_config(config):
+    with open(CONFIG_FILE, "w") as f:
+        json.dump(config, f, indent=4)
+
+config = load_config()
+
+async def get_prefix(bot, message):
+    default_prefixes = [PREFIX, "!!", "!"]
+    no_prefix_users = config.get("no_prefix_users", [])
+    if message.author.id in no_prefix_users:
+        return ["", PREFIX, "!!", "!"]
+    return default_prefixes
+
 # Initialize bot
 intents = discord.Intents.default()
 intents.message_content = True
@@ -26,11 +67,12 @@ intents.members = True
 intents.presences = True  # Required to read member online/idle/dnd status
 
 bot = commands.Bot(
-    command_prefix=[PREFIX, "!!"],
+    command_prefix=get_prefix,
     intents=intents,
     help_command=None,
     chunk_guilds_at_startup=True,  # Ensures full member cache on startup
 )
+
 
 from aiohttp import web
 
@@ -56,30 +98,23 @@ async def setup_hook():
 
 bot.setup_hook = setup_hook
 
-CONFIG_FILE = "config.json"
 cooldowns = {}
 COOLDOWN_TIME = 0  # 0 seconds (No cooldown)
 
-def load_config():
-    if not os.path.exists(CONFIG_FILE):
-        return {"enabled": True, "custom_message": None, "vc_statuses": {}}
-    with open(CONFIG_FILE, "r") as f:
-        data = json.load(f)
-        if "vc_statuses" not in data:
-            data["vc_statuses"] = {}
-        return data
-
-def save_config(config):
-    with open(CONFIG_FILE, "w") as f:
-        json.dump(config, f, indent=4)
-
-config = load_config()
-
 async def send_rich_reply(ctx, title, description=None, *, color=0xFFFFFF, footer=None, fields=None, thumbnail=None):
     """Send a clean, neatly arranged embed-style command reply."""
-    embed = discord.Embed(title=title, description=description or "", color=color)
-    embed.set_author(name=ctx.bot.user.name if ctx.bot.user else "Bot", icon_url=ctx.bot.user.display_avatar.url if ctx.bot.user else None)
-    embed.set_footer(text=footer or "Command reply", icon_url=ctx.bot.user.display_avatar.url if ctx.bot.user else None)
+    embed = discord.Embed(title=title, description=description or "", color=0xFFFFFF)
+    bot_name = ctx.bot.user.name if ctx.bot.user else "Bot"
+    embed.set_author(name=bot_name, icon_url=ctx.bot.user.display_avatar.url if ctx.bot.user else None)
+    
+    guild_name = ctx.guild.name if ctx.guild else "DMs"
+    guild_id = str(ctx.guild.id) if ctx.guild else "N/A"
+    server_count = len(ctx.bot.guilds)
+    
+    sys_footer = f"Bot: {bot_name} | Servers: {server_count} | Server: {guild_name} ({guild_id})"
+    final_footer = f"{footer} • {sys_footer}" if footer else sys_footer
+    
+    embed.set_footer(text=final_footer, icon_url=ctx.bot.user.display_avatar.url if ctx.bot.user else None)
     if thumbnail:
         embed.set_thumbnail(url=thumbnail)
     if fields:
@@ -279,7 +314,7 @@ async def on_ready():
     await bot.change_presence(
         activity=discord.Activity(
             type=discord.ActivityType.watching,
-            name="!!help | Dev by sivajee"
+            name="!help | voice status update bot / mention dm bot"
         )
     )
     if not auto_update_vc_statuses.is_running():
@@ -569,23 +604,23 @@ async def add_group(ctx):
 async def add_nickname(ctx, *, name: str):
     """Change the bot's nickname in this server."""
     if not ctx.guild:
-        return await ctx.send("❌ This command can only be used in a server.")
+        return await send_rich_reply(ctx, "❌ Error", "This command can only be used in a server.")
     try:
         await ctx.guild.me.edit(nick=name)
-        await ctx.send(f"✅ Bot nickname changed to **{name}**.")
+        await send_rich_reply(ctx, "✅ Success", f"Bot nickname changed to **{name}**.")
     except discord.Forbidden:
-        await ctx.send("❌ I don't have permission to change my nickname.")
+        await send_rich_reply(ctx, "❌ Error", "I don't have permission to change my nickname.")
     except Exception as e:
-        await ctx.send(f"❌ Failed to change nickname: {e}")
+        await send_rich_reply(ctx, "❌ Error", f"Failed to change nickname: {e}")
 
 @add_nickname.error
 async def add_nickname_error(ctx, error):
     if isinstance(error, commands.CheckFailure):
-        await ctx.send("You do not have permission to run this command.")
+        await send_rich_reply(ctx, "❌ Permission Denied", "You do not have permission to run this command.")
     elif isinstance(error, commands.MissingRequiredArgument):
-        await ctx.send(f"Missing argument. Usage: `{ctx.prefix}add nickname <name>`")
+        await send_rich_reply(ctx, "⚠️ Missing Argument", f"Missing argument. Usage: `{ctx.prefix}add nickname <name>`")
     else:
-        await ctx.send(f"An error occurred: {error}")
+        await send_rich_reply(ctx, "❌ Error", f"An error occurred: {error}")
 
 @add_group.command(name="serveravatar")
 @is_owner_or_extra()
@@ -596,23 +631,23 @@ async def add_serveravatar(ctx, *, url: str):
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as resp:
                 if resp.status != 200:
-                    return await ctx.send(f"❌ Could not download image (HTTP {resp.status}). Check the URL.")
+                    return await send_rich_reply(ctx, "❌ Error", f"Could not download image (HTTP {resp.status}). Check the URL.")
                 image_bytes = await resp.read()
         await bot.user.edit(avatar=image_bytes)
-        await ctx.send("✅ Bot avatar updated successfully!")
+        await send_rich_reply(ctx, "✅ Success", "Bot avatar updated successfully!")
     except discord.HTTPException as e:
-        await ctx.send(f"❌ Discord rejected the image: {e}")
+        await send_rich_reply(ctx, "❌ Error", f"Discord rejected the image: {e}")
     except Exception as e:
-        await ctx.send(f"❌ Failed to update avatar: {e}")
+        await send_rich_reply(ctx, "❌ Error", f"Failed to update avatar: {e}")
 
 @add_serveravatar.error
 async def add_serveravatar_error(ctx, error):
     if isinstance(error, commands.CheckFailure):
-        await ctx.send("You do not have permission to run this command.")
+        await send_rich_reply(ctx, "❌ Permission Denied", "You do not have permission to run this command.")
     elif isinstance(error, commands.MissingRequiredArgument):
-        await ctx.send(f"Missing argument. Usage: `{ctx.prefix}add serveravatar <image_url>`")
+        await send_rich_reply(ctx, "⚠️ Missing Argument", f"Missing argument. Usage: `{ctx.prefix}add serveravatar <image_url>`")
     else:
-        await ctx.send(f"An error occurred: {error}")
+        await send_rich_reply(ctx, "❌ Error", f"An error occurred: {error}")
 
 @add_group.command(name="serverbanner")
 @is_owner_or_extra()
@@ -623,25 +658,25 @@ async def add_serverbanner(ctx, *, url: str):
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as resp:
                 if resp.status != 200:
-                    return await ctx.send(f"❌ Could not download image (HTTP {resp.status}). Check the URL.")
+                    return await send_rich_reply(ctx, "❌ Error", f"Could not download image (HTTP {resp.status}). Check the URL.")
                 image_bytes = await resp.read()
         await bot.user.edit(banner=image_bytes)
-        await ctx.send("✅ Bot banner updated successfully!")
+        await send_rich_reply(ctx, "✅ Success", "Bot banner updated successfully!")
     except discord.HTTPException as e:
-        await ctx.send(f"❌ Discord rejected the image: {e}\n> Note: Banner may require the bot account to have Discord Nitro.")
+        await send_rich_reply(ctx, "❌ Error", f"Discord rejected the image: {e}\n> Note: Banner may require the bot account to have Discord Nitro.")
     except Exception as e:
-        await ctx.send(f"❌ Failed to update banner: {e}")
+        await send_rich_reply(ctx, "❌ Error", f"Failed to update banner: {e}")
 
 @add_serverbanner.error
 async def add_serverbanner_error(ctx, error):
     if isinstance(error, commands.CheckFailure):
-        await ctx.send("You do not have permission to run this command.")
+        await send_rich_reply(ctx, "❌ Permission Denied", "You do not have permission to run this command.")
     elif isinstance(error, commands.MissingRequiredArgument):
-        await ctx.send(f"Missing argument. Usage: `{ctx.prefix}add serverbanner <image_url>`")
+        await send_rich_reply(ctx, "⚠️ Missing Argument", f"Missing argument. Usage: `{ctx.prefix}add serverbanner <image_url>`")
     else:
-        await ctx.send(f"An error occurred: {error}")
+        await send_rich_reply(ctx, "❌ Error", f"An error occurred: {error}")
 
-@bot.command(name="help")
+@bot.command(name="help", aliases=["h"])
 async def custom_help(ctx):
     p = ctx.prefix
     embed = discord.Embed(
@@ -654,7 +689,7 @@ async def custom_help(ctx):
         name="🏓 General",
         value=(
             f"`{p}ping` — Show bot latency\n"
-            f"`{p}help` — Show this help panel"
+            f"`{p}help` — Show this help panel (alias: `{p}h`)"
         ),
         inline=False
     )
@@ -675,6 +710,10 @@ async def custom_help(ctx):
     embed.add_field(
         name="👑 Owner / Extra Owner",
         value=(
+            f"`{p}pgrant <user> <server_id>` — Grant premium access (Bot Owner only)\n"
+            f"`{p}noprefix <user> [on/off]` — Toggle prefix-free command access for a user\n"
+            f"`{p}botstats` — View all servers where the bot is added (alias: `{p}stats`)\n"
+            f"`{p}leaveserver [server_id]` — Leave a server (defaults to current server; Bot Owner only)\n"
             f"`{p}add extraowner <user>` — Add an extra owner\n"
             f"`{p}add nickname <name>` — Change the bot's nickname in this server\n"
             f"`{p}add serveravatar <url>` — Change the bot's avatar\n"
@@ -704,7 +743,13 @@ async def custom_help(ctx):
         dev_icon = ctx.bot.user.display_avatar.url
         dev_name = "Dev: sivajee"
 
-    embed.set_footer(text="Dev by sivajee", icon_url=dev_icon)
+    bot_name = ctx.bot.user.name if ctx.bot.user else "Bot"
+    guild_name = ctx.guild.name if ctx.guild else "DMs"
+    guild_id = str(ctx.guild.id) if ctx.guild else "N/A"
+    server_count = len(ctx.bot.guilds)
+
+    footer_text = f"Dev by sivajee • Bot: {bot_name} | Servers: {server_count} | Server: {guild_name} ({guild_id})"
+    embed.set_footer(text=footer_text, icon_url=dev_icon)
     embed.set_author(name=dev_name, icon_url=dev_icon)
     embed.set_thumbnail(url=ctx.bot.user.display_avatar.url)
 
@@ -724,6 +769,29 @@ async def vc(ctx):
 async def vc_add(ctx, channel_id: int, *, text: str):
     # Resolve placeholders for the immediate update
     guild = ctx.guild
+    
+    # Premium check: limit to 5 updates per server if not premium
+    is_already_added = str(channel_id) in config.get("vc_statuses", {})
+    if not is_already_added:
+        guild_vc_count = 0
+        if guild:
+            for cid in config.get("vc_statuses", {}):
+                if guild.get_channel(int(cid)) is not None:
+                    guild_vc_count += 1
+        
+        if guild_vc_count >= 5:
+            is_premium_guild = guild and guild.id in config.get("premium_servers", [])
+            is_premium_user = ctx.author.id in config.get("premium_users", [])
+            is_bot_owner = ctx.author.id == OWNER_ID
+            
+            if not (is_premium_guild or is_premium_user or is_bot_owner):
+                await send_rich_reply(
+                    ctx,
+                    "👑 Premium Required",
+                    "dm to this user 1495697271071703121 for premium access"
+                )
+                return
+
     resolved = resolve_vc_placeholders(text, guild)
     success, message, not_found = await set_voice_status(channel_id, resolved)
     if success:
@@ -737,7 +805,7 @@ async def vc_add(ctx, channel_id: int, *, text: str):
             fields=[("Channel", f"`{channel_id}`", True), ("Refresh", "Every 5 minutes", True)]
         )
     else:
-        await send_rich_reply(ctx, "❌ Voice status update failed", message, color=0xFF6B6B)
+        await send_rich_reply(ctx, "❌ Voice status update failed", message)
 
 @vc.command(name="remove")
 @is_owner_or_extra()
@@ -749,7 +817,7 @@ async def vc_remove(ctx, channel_id: int):
         save_config(config)
         await send_rich_reply(ctx, "✅ Voice channel removed", f"Channel `{channel_id}` has been removed from the auto-refresh list.", fields=[("Channel", f"`{channel_id}`", True)])
     else:
-        await send_rich_reply(ctx, "❌ Channel not found", f"Channel `{channel_id}` is not in the auto-refresh list.", color=0xFF6B6B)
+        await send_rich_reply(ctx, "❌ Channel not found", f"Channel `{channel_id}` is not in the auto-refresh list.")
 
 @vc.command(name="list")
 @is_owner_or_extra()
@@ -757,7 +825,7 @@ async def vc_list(ctx):
     """List all voice channels being auto-refreshed."""
     vc_statuses = config.get("vc_statuses", {})
     if not vc_statuses:
-        await send_rich_reply(ctx, "ℹ️ Auto-refresh list", "No voice channels are being auto-refreshed right now.", color=0xF7F7F7)
+        await send_rich_reply(ctx, "ℹ️ Auto-refresh list", "No voice channels are being auto-refreshed right now.")
         return
     lines = [f"`{ch_id}` → {status}" for ch_id, status in vc_statuses.items()]
     await send_rich_reply(
@@ -770,24 +838,24 @@ async def vc_list(ctx):
 @vc_add.error
 async def vc_add_error(ctx, error):
     if isinstance(error, commands.CheckFailure):
-        await ctx.send("You do not have permission to run this command.")
+        await send_rich_reply(ctx, "❌ Permission Denied", "You do not have permission to run this command.")
     elif isinstance(error, commands.MissingRequiredArgument):
-        await ctx.send(f"Missing argument. Usage: `{ctx.prefix}vc add <channel_id> <status_text>`")
+        await send_rich_reply(ctx, "⚠️ Missing Argument", f"Missing argument. Usage: `{ctx.prefix}vc add <channel_id> <status_text>`")
     elif isinstance(error, commands.BadArgument):
-        await ctx.send("Invalid channel ID. It must be an integer.")
+        await send_rich_reply(ctx, "⚠️ Invalid Argument", "Invalid channel ID. It must be an integer.")
     else:
-        await ctx.send(f"An error occurred: {error}")
+        await send_rich_reply(ctx, "❌ Error", f"An error occurred: {error}")
 
 @vc_remove.error
 async def vc_remove_error(ctx, error):
     if isinstance(error, commands.CheckFailure):
-        await ctx.send("You do not have permission to run this command.")
+        await send_rich_reply(ctx, "❌ Permission Denied", "You do not have permission to run this command.")
     elif isinstance(error, commands.MissingRequiredArgument):
-        await ctx.send(f"Missing argument. Usage: `{ctx.prefix}vc remove <channel_id>`")
+        await send_rich_reply(ctx, "⚠️ Missing Argument", f"Missing argument. Usage: `{ctx.prefix}vc remove <channel_id>`")
     elif isinstance(error, commands.BadArgument):
-        await ctx.send("Invalid channel ID. It must be an integer.")
+        await send_rich_reply(ctx, "⚠️ Invalid Argument", "Invalid channel ID. It must be an integer.")
     else:
-        await ctx.send(f"An error occurred: {error}")
+        await send_rich_reply(ctx, "❌ Error", f"An error occurred: {error}")
 
 @add_group.command(name="extraowner")
 @is_owner_or_extra()
@@ -804,13 +872,244 @@ async def add_extraowner(ctx, member: discord.User):
 @add_extraowner.error
 async def add_extraowner_error(ctx, error):
     if isinstance(error, commands.CheckFailure):
-        await ctx.send("You do not have permission to run this command.")
+        await send_rich_reply(ctx, "❌ Permission Denied", "You do not have permission to run this command.")
     elif isinstance(error, commands.MissingRequiredArgument):
-        await ctx.send(f"Missing argument. Usage: `{ctx.prefix}add extraowner <user_id_or_mention>`")
+        await send_rich_reply(ctx, "⚠️ Missing Argument", f"Missing argument. Usage: `{ctx.prefix}add extraowner <user_id_or_mention>`")
     elif isinstance(error, commands.BadArgument):
-        await ctx.send("Invalid user. Provide a valid user ID or mention.")
+        await send_rich_reply(ctx, "⚠️ Invalid Argument", "Invalid user. Provide a valid user ID or mention.")
     else:
-        await ctx.send(f"An error occurred: {error}")
+        await send_rich_reply(ctx, "❌ Error", f"An error occurred: {error}")
+
+@bot.command(name="pgrant")
+@is_owner()
+async def pgrant(ctx, user: discord.User, server_id: int):
+    """Grant premium status to a user and a server (Bot Owner only)."""
+    premium_users = config.setdefault("premium_users", [])
+    premium_servers = config.setdefault("premium_servers", [])
+    
+    if user.id not in premium_users:
+        premium_users.append(user.id)
+    if server_id not in premium_servers:
+        premium_servers.append(server_id)
+        
+    save_config(config)
+    
+    await send_rich_reply(
+        ctx,
+        "👑 Premium Access Granted",
+        f"Premium access has been granted successfully.\n\n"
+        f"• **User:** {user.mention} (`{user.id}`)\n"
+        f"• **Server ID:** `{server_id}`"
+    )
+
+@pgrant.error
+async def pgrant_error(ctx, error):
+    if isinstance(error, commands.CheckFailure):
+        await send_rich_reply(ctx, "❌ Permission Denied", "Only the bot owner can use this command.")
+    elif isinstance(error, commands.MissingRequiredArgument):
+        await send_rich_reply(ctx, "⚠️ Missing Argument", f"Missing argument. Usage: `{ctx.prefix}pgrant <@user/user_id> <server_id>`")
+    elif isinstance(error, commands.BadArgument):
+        await send_rich_reply(ctx, "⚠️ Invalid Argument", "Please provide a valid user (mention or ID) and an integer server ID.")
+    else:
+        await send_rich_reply(ctx, "❌ Error", f"An error occurred: {error}")
+
+@bot.command(name="noprefix")
+@is_owner_or_extra()
+async def noprefix(ctx, user: discord.User, state: str = None):
+    """Toggle prefix-free command execution for a user."""
+    no_prefix_users = config.setdefault("no_prefix_users", [])
+    
+    if state is not None:
+        state = state.lower()
+        if state == "on":
+            if user.id not in no_prefix_users:
+                no_prefix_users.append(user.id)
+            status = "enabled"
+        elif state == "off":
+            if user.id in no_prefix_users:
+                no_prefix_users.remove(user.id)
+            status = "disabled"
+        else:
+            await send_rich_reply(
+                ctx,
+                "⚠️ Invalid Usage",
+                f"Please use `{ctx.prefix}noprefix <user> <on/off>` or simply `{ctx.prefix}noprefix <user>` to toggle."
+            )
+            return
+    else:
+        # Toggle
+        if user.id in no_prefix_users:
+            no_prefix_users.remove(user.id)
+            status = "disabled"
+        else:
+            no_prefix_users.append(user.id)
+            status = "enabled"
+            
+    save_config(config)
+    await send_rich_reply(
+        ctx,
+        "⚡ No-Prefix Status Updated",
+        f"No-prefix command execution has been **{status}** for {user.mention} (`{user.id}`)."
+    )
+
+@noprefix.error
+async def noprefix_error(ctx, error):
+    if isinstance(error, commands.CheckFailure):
+        await send_rich_reply(ctx, "❌ Permission Denied", "You do not have permission to run this command.")
+    elif isinstance(error, commands.MissingRequiredArgument):
+        await send_rich_reply(ctx, "⚠️ Missing Argument", f"Missing argument. Usage: `{ctx.prefix}noprefix <@user/user_id> [on/off]`")
+    elif isinstance(error, commands.BadArgument):
+        await send_rich_reply(ctx, "⚠️ Invalid Argument", "Please provide a valid user ID or mention.")
+    else:
+        await send_rich_reply(ctx, "❌ Error", f"An error occurred: {error}")
+
+@bot.command(name="botstats", aliases=["stats", "servers"])
+@is_owner_or_extra()
+async def bot_stats(ctx):
+    """View servers where the bot is added."""
+    guilds = list(bot.guilds)
+    if not guilds:
+        return await send_rich_reply(ctx, "📊 Bot Stats", "The bot is not currently in any servers.")
+
+    # Sort guilds by member count descending
+    guilds.sort(key=lambda g: g.member_count or 0, reverse=True)
+    
+    per_page = 10
+    pages = [guilds[i:i + per_page] for i in range(0, len(guilds), per_page)]
+    
+    bot_name = ctx.bot.user.name if ctx.bot.user else "Bot"
+    total_servers = len(guilds)
+    total_members = sum(g.member_count or 0 for g in guilds)
+    
+    embeds = []
+    for page_num, page_guilds in enumerate(pages, start=1):
+        embed = discord.Embed(
+            title="📊 Bot Server List",
+            description=f"Total Servers: **{total_servers}** | Total Members: **{total_members}**",
+            color=0xFFFFFF
+        )
+        embed.set_author(name=bot_name, icon_url=ctx.bot.user.display_avatar.url if ctx.bot.user else None)
+        
+        server_lines = []
+        for index, guild in enumerate(page_guilds, start=(page_num - 1) * per_page + 1):
+            server_lines.append(
+                f"**{index}. {guild.name}**\n"
+                f"↳ **ID:** `{guild.id}` | **Members:** `{guild.member_count}`"
+            )
+        
+        embed.add_field(name=f"Servers (Page {page_num}/{len(pages)})", value="\n".join(server_lines), inline=False)
+        
+        guild_name = ctx.guild.name if ctx.guild else "DMs"
+        guild_id = str(ctx.guild.id) if ctx.guild else "N/A"
+        sys_footer = f"Bot: {bot_name} | Servers: {total_servers} | Server: {guild_name} ({guild_id})"
+        embed.set_footer(
+            text=f"Page {page_num}/{len(pages)} • {sys_footer}",
+            icon_url=ctx.bot.user.display_avatar.url if ctx.bot.user else None
+        )
+        embeds.append(embed)
+
+    message = await ctx.send(embed=embeds[0])
+    if len(embeds) > 1:
+        await message.add_reaction("◀️")
+        await message.add_reaction("▶️")
+
+        current_page = 0
+
+        def reaction_check(reaction, user):
+            return (
+                user == ctx.author
+                and reaction.message.id == message.id
+                and str(reaction.emoji) in ("◀️", "▶️")
+            )
+
+        while True:
+            try:
+                reaction, user = await ctx.bot.wait_for(
+                    "reaction_add", timeout=120.0, check=reaction_check
+                )
+                if str(reaction.emoji) == "▶️" and current_page < len(embeds) - 1:
+                    current_page += 1
+                    await message.edit(embed=embeds[current_page])
+                elif str(reaction.emoji) == "◀️" and current_page > 0:
+                    current_page -= 1
+                    await message.edit(embed=embeds[current_page])
+
+                try:
+                    await message.remove_reaction(reaction.emoji, user)
+                except discord.HTTPException:
+                    pass
+            except asyncio.TimeoutError:
+                try:
+                    await message.clear_reactions()
+                except discord.HTTPException:
+                    pass
+                break
+
+@bot_stats.error
+async def bot_stats_error(ctx, error):
+    if isinstance(error, commands.CheckFailure):
+        await send_rich_reply(ctx, "❌ Permission Denied", "You do not have permission to run this command.")
+    else:
+        await send_rich_reply(ctx, "❌ Error", f"An error occurred: {error}")
+
+@bot.command(name="leaveserver", aliases=["removebot", "leaveguild"])
+@is_owner_or_extra()
+async def leave_server(ctx, server_id: int = None):
+    """Force the bot to leave a server (Bot Owner only)."""
+    if server_id is None:
+        if ctx.guild:
+            guild = ctx.guild
+            server_id = guild.id
+        else:
+            return await send_rich_reply(
+                ctx,
+                "⚠️ Missing Argument",
+                "Please provide a server ID when running this command in DMs."
+            )
+    else:
+        guild = ctx.bot.get_guild(server_id)
+        
+    if not guild:
+        return await send_rich_reply(
+            ctx,
+            "❌ Server Not Found",
+            f"Could not find any server with ID `{server_id}`."
+        )
+    
+    guild_name = guild.name
+    try:
+        if ctx.guild and guild.id == ctx.guild.id:
+            try:
+                await send_rich_reply(
+                    ctx,
+                    "🚪 Leaving Server",
+                    f"Leaving this server (**{guild_name}**) as requested."
+                )
+            except Exception:
+                pass
+            await guild.leave()
+        else:
+            await guild.leave()
+            await send_rich_reply(
+                ctx,
+                "🚪 Left Server Successfully",
+                f"Successfully left the server **{guild_name}** (`{server_id}`)."
+            )
+    except Exception as e:
+        await send_rich_reply(
+            ctx,
+            "❌ Failed to Leave Server",
+            f"An error occurred while trying to leave **{guild_name}** (`{server_id}`):\n{e}"
+        )
+
+@leave_server.error
+async def leave_server_error(ctx, error):
+    if isinstance(error, commands.CheckFailure):
+        await send_rich_reply(ctx, "❌ Permission Denied", "Only the bot owner can use this command.")
+    elif isinstance(error, commands.BadArgument):
+        await send_rich_reply(ctx, "⚠️ Invalid Argument", "Please provide a valid integer server ID.")
+    else:
+        await send_rich_reply(ctx, "❌ Error", f"An error occurred: {error}")
 
 # --- Audit Log Command ---
 
@@ -839,7 +1138,7 @@ async def audit_logs(ctx, limit: int = 20):
     Default limit is 20, max is 50.
     """
     if not ctx.guild:
-        return await ctx.send("❌ This command can only be used in a server.")
+        return await send_rich_reply(ctx, "❌ Error", "This command can only be used in a server.")
 
     # Clamp limit
     limit = max(1, min(limit, 50))
@@ -927,8 +1226,13 @@ async def audit_logs(ctx, limit: int = 20):
             )
             embed.add_field(name=f"🔹 {action_name}", value=value_lines, inline=False)
 
+        guild_name = ctx.guild.name if ctx.guild else "DMs"
+        guild_id = str(ctx.guild.id) if ctx.guild else "N/A"
+        server_count = len(ctx.bot.guilds)
+        bot_name = ctx.bot.user.name if ctx.bot.user else "Bot"
+        sys_footer = f"Bot: {bot_name} | Servers: {server_count} | Server: {guild_name} ({guild_id})"
         embed.set_footer(
-            text=f"Page {page_num}/{len(pages)} • Bot actions are automatically filtered out",
+            text=f"Page {page_num}/{len(pages)} • Bot actions are automatically filtered out • {sys_footer}",
             icon_url=ctx.bot.user.display_avatar.url if ctx.bot.user else None,
         )
         embeds.append(embed)
@@ -975,18 +1279,18 @@ async def audit_logs(ctx, limit: int = 20):
 @audit_group.error
 async def audit_group_error(ctx, error):
     if isinstance(error, commands.CheckFailure):
-        await ctx.send("You do not have permission to run this command.")
+        await send_rich_reply(ctx, "❌ Permission Denied", "You do not have permission to run this command.")
     else:
-        await ctx.send(f"An error occurred: {error}")
+        await send_rich_reply(ctx, "❌ Error", f"An error occurred: {error}")
 
 @audit_logs.error
 async def audit_logs_error(ctx, error):
     if isinstance(error, commands.CheckFailure):
-        await ctx.send("You do not have permission to run this command.")
+        await send_rich_reply(ctx, "❌ Permission Denied", "You do not have permission to run this command.")
     elif isinstance(error, commands.BadArgument):
-        await ctx.send(f"Invalid limit. Usage: `{ctx.prefix}audit logs [number]`")
+        await send_rich_reply(ctx, "⚠️ Invalid Argument", f"Invalid limit. Usage: `{ctx.prefix}audit logs [number]`")
     else:
-        await ctx.send(f"An error occurred: {error}")
+        await send_rich_reply(ctx, "❌ Error", f"An error occurred: {error}")
 
 @bot.event
 async def on_command_error(ctx, error):

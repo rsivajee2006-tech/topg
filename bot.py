@@ -325,6 +325,48 @@ async def on_ready():
         print("[AutoVC] Dynamic VC status loop started (every 1 min).")
 
 @bot.event
+async def on_voice_state_update(member, before, after):
+    """Refresh dynamic voice status immediately when users join/leave or move channels."""
+    if not config.get("vc_statuses"):
+        return
+
+    for channel_id_str, status in list(config["vc_statuses"].items()):
+        if not has_dynamic_placeholders(status):
+            continue
+        try:
+            channel_id_int = int(channel_id_str)
+            guild = member.guild
+            ch = bot.get_channel(channel_id_int)
+            if guild is None or ch is None or ch.guild.id != guild.id:
+                continue
+            resolved_status = resolve_vc_placeholders(status, guild)
+            await set_voice_status(channel_id_int, resolved_status)
+        except Exception as e:
+            print(f"[AutoVC] Immediate dynamic update failed for {channel_id_str}: {e}")
+
+@bot.event
+async def on_member_update(before, after):
+    """Refresh live VC placeholders as soon as a member comes online/offline."""
+    if before.status == after.status:
+        return
+    if not config.get("vc_statuses"):
+        return
+
+    for channel_id_str, status in list(config["vc_statuses"].items()):
+        if not has_dynamic_placeholders(status):
+            continue
+        try:
+            channel_id_int = int(channel_id_str)
+            guild = after.guild
+            ch = bot.get_channel(channel_id_int)
+            if guild is None or ch is None or ch.guild.id != guild.id:
+                continue
+            resolved_status = resolve_vc_placeholders(status, guild)
+            await set_voice_status(channel_id_int, resolved_status)
+        except Exception as e:
+            print(f"[AutoVC] Presence-based update failed for {channel_id_str}: {e}")
+
+@bot.event
 async def on_message(message):
     # Ignore bot messages
     if message.author.bot:
@@ -682,31 +724,29 @@ async def custom_help(ctx):
     embed = discord.Embed(
         title="📖 Command Help",
         description="Here are all available commands.",
-        color=0xFFFFFF  # White
+        color=0x0F1115,
     )
-
+    embed.set_thumbnail(url=ctx.bot.user.display_avatar.url)
     embed.add_field(
         name="🏓 General",
         value=(
             f"`{p}ping` — Show bot latency\n"
             f"`{p}help` — Show this help panel (alias: `{p}h`)"
         ),
-        inline=False
+        inline=False,
     )
-
     embed.add_field(
         name="🔊 Voice Channel Status",
         value=(
             f"`{p}vc add <channel_id> <text>` — Set & auto-refresh a VC status\n"
-            f"↳ **Dynamic placeholders** (update every 1 min):\n"
+            f"↳ **Dynamic placeholders** (update instantly on join/leave):\n"
             f"  `{{totalusers}}` `{{onlineusers}}` `{{activevc}}` `{{vcusers}}`\n"
             f"↳ *Static text refreshes every 5 min.*\n"
             f"`{p}vc remove <channel_id>` — Stop auto-refreshing a VC status\n"
             f"`{p}vc list` — List all auto-refreshed VCs"
         ),
-        inline=False
+        inline=False,
     )
-
     embed.add_field(
         name="👑 Owner / Extra Owner",
         value=(
@@ -722,16 +762,15 @@ async def custom_help(ctx):
             f"`{p}dmmsetup` — Set up a custom DM message layout\n"
             f"`{p}dmmreset` — Reset DM layout to default"
         ),
-        inline=False
+        inline=False,
     )
-
     embed.add_field(
         name="📋 Audit Log",
         value=(
             f"`{p}audit logs [limit]` — View recent audit log (bot actions filtered out)\n"
             f"↳ Default shows 20 entries, max 50"
         ),
-        inline=False
+        inline=False,
     )
 
     DEV_USER_ID = 1495697271071703121
@@ -743,15 +782,8 @@ async def custom_help(ctx):
         dev_icon = ctx.bot.user.display_avatar.url
         dev_name = "Dev: sivajee"
 
-    bot_name = ctx.bot.user.name if ctx.bot.user else "Bot"
-    guild_name = ctx.guild.name if ctx.guild else "DMs"
-    guild_id = str(ctx.guild.id) if ctx.guild else "N/A"
-    server_count = len(ctx.bot.guilds)
-
-    footer_text = f"Dev by sivajee • Bot: {bot_name}"
-    embed.set_footer(text=footer_text, icon_url=dev_icon)
+    embed.set_footer(text="Dev by sivajee", icon_url=dev_icon)
     embed.set_author(name=dev_name, icon_url=dev_icon)
-    embed.set_thumbnail(url=ctx.bot.user.display_avatar.url)
 
     await ctx.send(embed=embed)
 

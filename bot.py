@@ -1266,8 +1266,8 @@ async def audit_logs(ctx, limit: int = 20):
     for page_num, page_entries in enumerate(pages, start=1):
         embed = discord.Embed(
             title="📋 Server Audit Log",
-            description=f"Showing **{len(entries)}** recent entries (bot's own actions hidden)",
-            color=0xFFFFFF,
+            description=f"Showing **{len(entries)}** recent entries • Bot actions hidden",
+            color=0x111111,
         )
         embed.set_author(
             name=ctx.guild.name,
@@ -1290,10 +1290,10 @@ async def audit_logs(ctx, limit: int = 20):
             timestamp = discord.utils.format_dt(entry.created_at, style="R")
 
             value_lines = (
-                f"**Executor:** {executor}\n"
-                f"**Target:** {target_str}\n"
-                f"**Reason:** {reason}\n"
-                f"**When:** {timestamp}"
+                f"Executor: {executor}\n"
+                f"Target: {target_str}\n"
+                f"Reason: {reason}\n"
+                f"When: {timestamp}"
             )
             embed.add_field(name=f"🔹 {action_name}", value=value_lines, inline=False)
 

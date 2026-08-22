@@ -729,8 +729,8 @@ async def custom_help(ctx):
     p = ctx.prefix
     embed = discord.Embed(
         title="📖 Command Help",
-        description="Each command is listed individually below.",
-        color=0xFFFFFF,
+        description="Here are all available commands.",
+        color=0x111111,
     )
     embed.set_thumbnail(url=ctx.bot.user.display_avatar.url)
 

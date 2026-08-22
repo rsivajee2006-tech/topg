@@ -755,45 +755,61 @@ def load_help_modules():
 MODULES = load_help_modules()
 
 
-def get_help_embed(module_key: str = "general"):
-    module = MODULES.get(module_key, MODULES["general"])
+def build_command_help_embed(ctx):
+    prefix = ctx.prefix or ","
     embed = discord.Embed(
-        title=f"{module['emoji']} {module['title']}",
-        description=module['description'],
-        color=0xFFFFFF,
+        title="Command Help",
+        description="Here are all available commands.",
+        color=0x111111,
     )
-    embed.add_field(name="Commands", value="\n".join(module["commands"]), inline=False)
-    embed.set_footer(text="Select a module from the dropdown below")
+
+    embed.set_author(name="Dev: sivaz_jee")
+
+    general = (
+        f"{prefix}ping — Show bot latency\n"
+        f"{prefix}help — Show this help panel\n"
+        f"{prefix}h — Alias for help"
+    )
+
+    voice = (
+        f"{prefix}vc add <channel_id> <text> — Set a VC status\n"
+        f"{prefix}vc remove <channel_id> — Remove auto-refresh\n"
+        f"{prefix}vc list — List active VC updates\n\n"
+        "Tokens: {totalusers} {onlineusers} {activevc} {vcusers}\n"
+        "Static text refreshes every 5 minutes"
+    )
+
+    owner = (
+        f"{prefix}pgrant <user> <server_id> — Grant premium access\n"
+        f"{prefix}noprefix <user> [on/off] — Toggle prefix-free use\n"
+        f"{prefix}botstats — View all connected servers\n"
+        f"{prefix}leaveserver [server_id] — Remove the bot from a guild\n\n"
+        f"{prefix}add extraowner <user> — Add extra owner\n"
+        f"{prefix}add nickname <name> — Rename the bot\n"
+        f"{prefix}add serveravatar <url> — Set a custom avatar\n"
+        f"{prefix}add serverbanner <url> — Set a custom banner\n\n"
+        f"{prefix}dmm <on/off> — Toggle DM mention alerts\n"
+        f"{prefix}dmmsetup — Set custom DM layout\n"
+        f"{prefix}dmmreset — Reset default DM layout"
+    )
+
+    audit = (
+        f"{prefix}audit logs [limit] — View recent actions\n"
+        "Default limit: 20 • Max: 50"
+    )
+
+    embed.add_field(name="🔎 General", value=general, inline=False)
+    embed.add_field(name="🔊 Voice Channel Status", value=voice, inline=False)
+    embed.add_field(name="👑 Owner / Extra Owner", value=owner, inline=False)
+    embed.add_field(name="📋 Audit Log", value=audit, inline=False)
+
+    embed.set_footer(text="Dev by sivajee")
     return embed
-
-
-class HelpModuleSelect(discord.ui.Select):
-    def __init__(self):
-        options = [
-            discord.SelectOption(
-                label=info["title"],
-                value=key,
-                emoji=info["emoji"],
-                description=info["description"],
-            )
-            for key, info in MODULES.items()
-        ]
-        super().__init__(placeholder="Select Module From Here", options=options, min_values=1, max_values=1)
-
-    async def callback(self, interaction: discord.Interaction):
-        selected = self.values[0]
-        await interaction.response.edit_message(embed=get_help_embed(selected), view=self.view)
-
-
-class HelpModuleView(discord.ui.View):
-    def __init__(self):
-        super().__init__(timeout=180)
-        self.add_item(HelpModuleSelect())
 
 
 @bot.command(name="help", aliases=["h"])
 async def custom_help(ctx):
-    await ctx.send(embed=get_help_embed("general"), view=HelpModuleView())
+    await ctx.send(embed=build_command_help_embed(ctx))
 
 @bot.group(name="vc", invoke_without_command=True)
 async def vc(ctx):

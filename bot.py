@@ -765,37 +765,38 @@ def build_command_help_embed(ctx):
 
     embed.set_author(name="Dev: sivaz_jee")
 
+    # Use bullet points and inline code for command names for consistent alignment
     general = (
-        f"{prefix}ping — Show bot latency\n"
-        f"{prefix}help — Show this help panel\n"
-        f"{prefix}h — Alias for help"
+        f"• `{prefix}ping` — Show bot latency\n"
+        f"• `{prefix}help` — Show this help panel\n"
+        f"• `{prefix}h` — Alias for help"
     )
 
     voice = (
-        f"{prefix}vc add <channel_id> <text> — Set a VC status\n"
-        f"{prefix}vc remove <channel_id> — Remove auto-refresh\n"
-        f"{prefix}vc list — List active VC updates\n\n"
-        "Tokens: {totalusers} {onlineusers} {activevc} {vcusers}\n"
-        "Static text refreshes every 5 minutes"
+        f"• `{prefix}vc add <channel_id> <text>` — Set a VC status\n"
+        f"• `{prefix}vc remove <channel_id>` — Remove auto-refresh\n"
+        f"• `{prefix}vc list` — List active VC updates\n\n"
+        "• Tokens: `{totalusers}` `{onlineusers}` `{activevc}` `{vcusers}`\n"
+        "• Static text refreshes every 5 minutes"
     )
 
     owner = (
-        f"{prefix}pgrant <user> <server_id> — Grant premium access\n"
-        f"{prefix}noprefix <user> [on/off] — Toggle prefix-free use\n"
-        f"{prefix}botstats — View all connected servers\n"
-        f"{prefix}leaveserver [server_id] — Remove the bot from a guild\n\n"
-        f"{prefix}add extraowner <user> — Add extra owner\n"
-        f"{prefix}add nickname <name> — Rename the bot\n"
-        f"{prefix}add serveravatar <url> — Set a custom avatar\n"
-        f"{prefix}add serverbanner <url> — Set a custom banner\n\n"
-        f"{prefix}dmm <on/off> — Toggle DM mention alerts\n"
-        f"{prefix}dmmsetup — Set custom DM layout\n"
-        f"{prefix}dmmreset — Reset default DM layout"
+        f"• `{prefix}pgrant <user> <server_id>` — Grant premium access\n"
+        f"• `{prefix}noprefix <user> [on/off]` — Toggle prefix-free use\n"
+        f"• `{prefix}botstats` — View all connected servers\n"
+        f"• `{prefix}leaveserver [server_id]` — Remove the bot from a guild\n\n"
+        f"• `{prefix}add extraowner <user>` — Add extra owner\n"
+        f"• `{prefix}add nickname <name>` — Rename the bot\n"
+        f"• `{prefix}add serveravatar <url>` — Set a custom avatar\n"
+        f"• `{prefix}add serverbanner <url>` — Set a custom banner\n\n"
+        f"• `{prefix}dmm <on/off>` — Toggle DM mention alerts\n"
+        f"• `{prefix}dmmsetup` — Set custom DM layout\n"
+        f"• `{prefix}dmmreset` — Reset default DM layout"
     )
 
     audit = (
-        f"{prefix}audit logs [limit] — View recent actions\n"
-        "Default limit: 20 • Max: 50"
+        f"• `{prefix}audit logs [limit]` — View recent actions\n"
+        "• Default limit: 20 • Max: 50"
     )
 
     embed.add_field(name="🔎 General", value=general, inline=False)

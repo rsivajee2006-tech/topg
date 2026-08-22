@@ -101,19 +101,25 @@ bot.setup_hook = setup_hook
 cooldowns = {}
 COOLDOWN_TIME = 0  # 0 seconds (No cooldown)
 
+def format_embed_list(items):
+    """Format a list into a readable, line-by-line embed body."""
+    if not items:
+        return "- None"
+    return "\n".join(f"• {item}" for item in items if item)
+
 async def send_rich_reply(ctx, title, description=None, *, color=0xFFFFFF, footer=None, fields=None, thumbnail=None):
     """Send a clean, neatly arranged embed-style command reply."""
-    embed = discord.Embed(title=title, description=description or "", color=0xFFFFFF)
+    embed = discord.Embed(title=title, description=description or "", color=color)
     bot_name = ctx.bot.user.name if ctx.bot.user else "Bot"
     embed.set_author(name=bot_name, icon_url=ctx.bot.user.display_avatar.url if ctx.bot.user else None)
-    
+
     guild_name = ctx.guild.name if ctx.guild else "DMs"
     guild_id = str(ctx.guild.id) if ctx.guild else "N/A"
     server_count = len(ctx.bot.guilds)
-    
+
     sys_footer = f"Bot: {bot_name} | Servers: {server_count} | Server: {guild_name} ({guild_id})"
     final_footer = f"{footer} • {sys_footer}" if footer else sys_footer
-    
+
     embed.set_footer(text=final_footer, icon_url=ctx.bot.user.display_avatar.url if ctx.bot.user else None)
     if thumbnail:
         embed.set_thumbnail(url=thumbnail)
@@ -124,7 +130,7 @@ async def send_rich_reply(ctx, title, description=None, *, color=0xFFFFFF, foote
             else:
                 name, value = field
                 inline = False
-            embed.add_field(name=name, value=value, inline=inline)
+            embed.add_field(name=name, value=str(value), inline=inline)
     await ctx.send(embed=embed)
 
 # Persistent Extra Owners Storage
@@ -723,52 +729,56 @@ async def custom_help(ctx):
     p = ctx.prefix
     embed = discord.Embed(
         title="📖 Command Help",
-        description="Here are all available commands.",
+        description="Line-by-line command overview",
         color=0x0F1115,
     )
     embed.set_thumbnail(url=ctx.bot.user.display_avatar.url)
+
     embed.add_field(
         name="🏓 General",
         value=(
-            f"`{p}ping` — Show bot latency\n"
-            f"`{p}help` — Show this help panel (alias: `{p}h`)"
+            f"• `{p}ping` — Show bot latency\n"
+            f"• `{p}help` — Show this help panel\n"
+            f"• `{p}h` — Alias for help"
         ),
         inline=False,
     )
+
     embed.add_field(
         name="🔊 Voice Channel Status",
         value=(
-            f"`{p}vc add <channel_id> <text>` — Set & auto-refresh a VC status\n"
-            f"↳ **Dynamic placeholders** (update instantly on join/leave):\n"
-            f"  `{{totalusers}}` `{{onlineusers}}` `{{activevc}}` `{{vcusers}}`\n"
-            f"↳ *Static text refreshes every 5 min.*\n"
-            f"`{p}vc remove <channel_id>` — Stop auto-refreshing a VC status\n"
-            f"`{p}vc list` — List all auto-refreshed VCs"
+            f"• `{p}vc add <channel_id> <text>` — Set a VC status\n"
+            f"• `{p}vc remove <channel_id>` — Remove auto-refresh\n"
+            f"• `{p}vc list` — List active VC updates\n"
+            f"• Dynamic tokens: `{{totalusers}}` `{{onlineusers}}` `{{activevc}}` `{{vcusers}}`\n"
+            f"• Static text refreshes every 5 minutes"
         ),
         inline=False,
     )
+
     embed.add_field(
         name="👑 Owner / Extra Owner",
         value=(
-            f"`{p}pgrant <user> <server_id>` — Grant premium access (Bot Owner only)\n"
-            f"`{p}noprefix <user> [on/off]` — Toggle prefix-free command access for a user\n"
-            f"`{p}botstats` — View all servers where the bot is added (alias: `{p}stats`)\n"
-            f"`{p}leaveserver [server_id]` — Leave a server (defaults to current server; Bot Owner only)\n"
-            f"`{p}add extraowner <user>` — Add an extra owner\n"
-            f"`{p}add nickname <name>` — Change the bot's nickname in this server\n"
-            f"`{p}add serveravatar <url>` — Change the bot's avatar\n"
-            f"`{p}add serverbanner <url>` — Change the bot's banner\n"
-            f"`{p}dmm <on/off>` — Toggle DM mention notifications\n"
-            f"`{p}dmmsetup` — Set up a custom DM message layout\n"
-            f"`{p}dmmreset` — Reset DM layout to default"
+            f"• `{p}pgrant <user> <server_id>` — Grant premium access\n"
+            f"• `{p}noprefix <user> [on/off]` — Toggle prefix-free use\n"
+            f"• `{p}botstats` — View all connected servers\n"
+            f"• `{p}leaveserver [server_id]` — Remove the bot from a guild\n"
+            f"• `{p}add extraowner <user>` — Add extra owner\n"
+            f"• `{p}add nickname <name>` — Rename the bot\n"
+            f"• `{p}add serveravatar <url>` — Set a custom avatar\n"
+            f"• `{p}add serverbanner <url>` — Set a custom banner\n"
+            f"• `{p}dmm <on/off>` — Toggle DM mention alerts\n"
+            f"• `{p}dmmsetup` — Set custom DM layout\n"
+            f"• `{p}dmmreset` — Reset default DM layout"
         ),
         inline=False,
     )
+
     embed.add_field(
         name="📋 Audit Log",
         value=(
-            f"`{p}audit logs [limit]` — View recent audit log (bot actions filtered out)\n"
-            f"↳ Default shows 20 entries, max 50"
+            f"• `{p}audit logs [limit]` — View recent actions\n"
+            f"• Default limit: 20 • Max: 50"
         ),
         inline=False,
     )

@@ -729,8 +729,8 @@ async def custom_help(ctx):
     p = ctx.prefix
     embed = discord.Embed(
         title="📖 Command Help",
-        description="Line-by-line command overview",
-        color=0x0F1115,
+        description="Each command is listed individually below.",
+        color=0xFFFFFF,
     )
     embed.set_thumbnail(url=ctx.bot.user.display_avatar.url)
 
@@ -750,7 +750,7 @@ async def custom_help(ctx):
             f"• `{p}vc add <channel_id> <text>` — Set a VC status\n"
             f"• `{p}vc remove <channel_id>` — Remove auto-refresh\n"
             f"• `{p}vc list` — List active VC updates\n"
-            f"• Dynamic tokens: `{{totalusers}}` `{{onlineusers}}` `{{activevc}}` `{{vcusers}}`\n"
+            f"• Tokens: `{{totalusers}}` `{{onlineusers}}` `{{activevc}}` `{{vcusers}}`\n"
             f"• Static text refreshes every 5 minutes"
         ),
         inline=False,

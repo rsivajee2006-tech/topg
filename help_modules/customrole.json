@@ -1,0 +1,10 @@
+{
+  "title": "CustomRole",
+  "emoji": "🛠️",
+  "description": "Create and manage custom roles.",
+  "commands": [
+    "`/role create` — Create a custom role",
+    "`/role delete` — Delete a role",
+    "`/role edit` — Edit role properties"
+  ]
+}

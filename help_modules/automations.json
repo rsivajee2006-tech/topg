@@ -1,0 +1,10 @@
+{
+  "title": "Automations",
+  "emoji": "🤖",
+  "description": "Useful scheduled and scripted tasks.",
+  "commands": [
+    "`/automation add` — Add a new automation",
+    "`/automation list` — View automation jobs",
+    "`/automation remove` — Remove an automation"
+  ]
+}

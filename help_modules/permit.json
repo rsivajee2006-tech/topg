@@ -1,0 +1,10 @@
+{
+  "title": "Permit",
+  "emoji": "✅",
+  "description": "Member access and trust requests.",
+  "commands": [
+    "`/permit add` — Allow a user",
+    "`/permit list` — View permitted users",
+    "`/permit remove` — Remove a permit"
+  ]
+}

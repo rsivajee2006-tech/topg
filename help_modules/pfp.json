@@ -1,0 +1,10 @@
+{
+  "title": "Pfp",
+  "emoji": "🖼️",
+  "description": "Profile-picture and avatar tools.",
+  "commands": [
+    "`/pfp set` — Set a profile image",
+    "`/pfp reset` — Reset the avatar",
+    "`/pfp view` — View the current avatar"
+  ]
+}

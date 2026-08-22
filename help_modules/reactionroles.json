@@ -1,0 +1,10 @@
+{
+  "title": "ReactionRoles",
+  "emoji": "💠",
+  "description": "Role assignment through reaction buttons.",
+  "commands": [
+    "`/rr add` — Add a reaction role",
+    "`/rr remove` — Remove a reaction role",
+    "`/rr list` — Display configured roles"
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "title": "Logging",
+  "emoji": "📝",
+  "description": "Server action and event logging.",
+  "commands": [
+    "`/audit logs` — View recent server events",
+    "`/modlogs` — View moderation logs",
+    "`/settings logs` — Configure logging options"
+  ]
+}

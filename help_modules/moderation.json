@@ -1,0 +1,10 @@
+{
+  "title": "Moderation",
+  "emoji": "🛑",
+  "description": "User moderation and server safety tools.",
+  "commands": [
+    "`/ban` — Ban a member",
+    "`/kick` — Kick a member",
+    "`/mute` — Temporarily mute a user"
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "title": "General",
+  "emoji": "🔧",
+  "description": "Basic commands and useful bot actions.",
+  "commands": [
+    "`/ping` — Check bot latency",
+    "`/help` — Open the help menu",
+    "`/stats` — View bot/server statistics"
+  ]
+}

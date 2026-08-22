@@ -732,208 +732,27 @@ async def add_serverbanner_error(ctx, error):
     else:
         await send_rich_reply(ctx, "❌ Error", f"An error occurred: {error}")
 
-MODULES = {
-    "antinuke": {
-        "title": "Antinuke",
-        "emoji": "🛡️",
-        "description": "Protection and anti-abuse controls.",
-        "commands": [
-            "`/antinuke` — Manage anti-nuke protections",
-            "`/lockdown` — Quickly enable lockdown protections",
-            "`/modlogs` — View the latest protection events",
-        ],
-    },
-    "automod": {
-        "title": "AutoMod",
-        "emoji": "⚙️",
-        "description": "Automatic moderation rules and filtering.",
-        "commands": [
-            "`/automod` — Manage auto moderation rules",
-            "`/filter` — Configure spam and word filters",
-            "`/warns` — View recent moderation warnings",
-        ],
-    },
-    "automations": {
-        "title": "Automations",
-        "emoji": "🤖",
-        "description": "Useful scheduled and scripted tasks.",
-        "commands": [
-            "`/automation add` — Add a new automation",
-            "`/automation list` — View automation jobs",
-            "`/automation remove` — Remove an automation",
-        ],
-    },
-    "autoresponder": {
-        "title": "Autoresponder",
-        "emoji": "💬",
-        "description": "Replies triggered by keywords and messages.",
-        "commands": [
-            "`/ar add` — Create a trigger",
-            "`/ar list` — View saved autoresponses",
-            "`/ar remove` — Delete a trigger",
-        ],
-    },
-    "custom": {
-        "title": "Custom",
-        "emoji": "🧩",
-        "description": "Custom bot settings and personal controls.",
-        "commands": [
-            "`/help` — Open this module selector",
-            "`/dmm` — Toggle DM mention notifications",
-            "`/dmmsetup` — Create a custom DM layout",
-        ],
-    },
-    "fun": {
-        "title": "Fun",
-        "emoji": "🎉",
-        "description": "Entertainment, reactions, and fun commands.",
-        "commands": [
-            "`/meme` — Send a random meme",
-            "`/fact` — Show a random fact",
-            "`/8ball` — Ask the magic 8-ball",
-        ],
-    },
-    "general": {
-        "title": "General",
-        "emoji": "🔧",
-        "description": "Basic commands and useful bot actions.",
-        "commands": [
-            "`/ping` — Check bot latency",
-            "`/help` — Open the help menu",
-            "`/stats` — View bot/server statistics",
-        ],
-    },
-    "giveaway": {
-        "title": "Giveaway",
-        "emoji": "🎁",
-        "description": "Create and manage giveaways.",
-        "commands": [
-            "`/gstart` — Start a giveaway",
-            "`/greroll` — Reroll a winner",
-            "`/gend` — End a giveaway",
-        ],
-    },
-    "leaderboard": {
-        "title": "Leaderboard",
-        "emoji": "🏆",
-        "description": "Ranks, scores, and activity tracking.",
-        "commands": [
-            "`/lb` — View the leaderboard",
-            "`/top` — Show top members",
-            "`/reward` — Claim a leaderboard reward",
-        ],
-    },
-    "logging": {
-        "title": "Logging",
-        "emoji": "📝",
-        "description": "Server action and event logging.",
-        "commands": [
-            "`/audit logs` — View recent server events",
-            "`/modlogs` — View moderation logs",
-            "`/settings logs` — Configure logging options",
-        ],
-    },
-    "moderation": {
-        "title": "Moderation",
-        "emoji": "🛑",
-        "description": "User moderation and server safety tools.",
-        "commands": [
-            "`/ban` — Ban a member",
-            "`/kick` — Kick a member",
-            "`/mute` — Temporarily mute a user",
-        ],
-    },
-    "music": {
-        "title": "Music",
-        "emoji": "🎵",
-        "description": "Audio playback and queue controls.",
-        "commands": [
-            "`/play` — Play a song",
-            "`/pause` — Pause the queue",
-            "`/skip` — Skip the current song",
-        ],
-    },
-    "permit": {
-        "title": "Permit",
-        "emoji": "✅",
-        "description": "Member access and trust requests.",
-        "commands": [
-            "`/permit add` — Allow a user",
-            "`/permit list` — View permitted users",
-            "`/permit remove` — Remove a permit",
-        ],
-    },
-    "pfp": {
-        "title": "Pfp",
-        "emoji": "🖼️",
-        "description": "Profile-picture and avatar tools.",
-        "commands": [
-            "`/pfp set` — Set a profile image",
-            "`/pfp reset` — Reset the avatar",
-            "`/pfp view` — View the current avatar",
-        ],
-    },
-    "reactionroles": {
-        "title": "Reaction Roles",
-        "emoji": "💠",
-        "description": "Role assignment through reaction buttons.",
-        "commands": [
-            "`/rr add` — Add a reaction role",
-            "`/rr remove` — Remove a reaction role",
-            "`/rr list` — Display configured roles",
-        ],
-    },
-    "ticket": {
-        "title": "Ticket",
-        "emoji": "🎫",
-        "description": "Support ticket creation and management.",
-        "commands": [
-            "`/ticket new` — Open a support ticket",
-            "`/ticket close` — Close a ticket",
-            "`/ticket list` — View active tickets",
-        ],
-    },
-    "utility": {
-        "title": "Utility",
-        "emoji": "🛠️",
-        "description": "Useful admin, status, and utility tools.",
-        "commands": [
-            "`/remind` — Set a reminder",
-            "`/convert` — Convert units or values",
-            "`/info` — Show a member or server summary",
-        ],
-    },
-    "voice": {
-        "title": "Voice",
-        "emoji": "🔊",
-        "description": "Voice status and live voice controls.",
-        "commands": [
-            "`/vc add` — Set a channel voice status",
-            "`/vc remove` — Remove a voice status",
-            "`/vc list` — Show all tracked voice channels",
-        ],
-    },
-    "voicemaster": {
-        "title": "VoiceMaster",
-        "emoji": "🎧",
-        "description": "Advanced voice channel management.",
-        "commands": [
-            "`/vm config` — Setup voice master settings",
-            "`/vm limit` — Set voice limits",
-            "`/vm autoset` — Auto-configure voice rooms",
-        ],
-    },
-    "welcomer": {
-        "title": "Welcomer",
-        "emoji": "👋",
-        "description": "Welcome and goodbye messages.",
-        "commands": [
-            "`/welcome setup` — Configure welcome text",
-            "`/goodbye setup` — Configure goodbye text",
-            "`/joinroles` — Manage join roles",
-        ],
-    },
-}
+HELP_MODULES_DIR = "help_modules"
+
+def load_help_modules():
+    modules = {}
+    if not os.path.isdir(HELP_MODULES_DIR):
+        return modules
+    for fname in sorted(os.listdir(HELP_MODULES_DIR)):
+        if not fname.lower().endswith(".json"):
+            continue
+        path = os.path.join(HELP_MODULES_DIR, fname)
+        try:
+            with open(path, "r", encoding="utf-8") as fh:
+                data = json.load(fh)
+            key = os.path.splitext(fname)[0]
+            modules[key] = data
+        except Exception as e:
+            print(f"Failed to load help module {fname}: {e}")
+    return modules
+
+# Load help modules from the help_modules directory (one JSON per module).
+MODULES = load_help_modules()
 
 
 def get_help_embed(module_key: str = "general"):

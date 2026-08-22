@@ -1,0 +1,10 @@
+{
+  "title": "Antinuke",
+  "emoji": "🛡️",
+  "description": "Protection and anti-abuse controls.",
+  "commands": [
+    "`/antinuke enable` — Enable antinuke protections",
+    "`/antinuke disable` — Disable antinuke protections",
+    "`/antinuke config` — View or edit protection config"
+  ]
+}

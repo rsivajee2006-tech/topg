@@ -1,0 +1,10 @@
+{
+  "title": "Utility",
+  "emoji": "🛠️",
+  "description": "Useful admin, status, and utility tools.",
+  "commands": [
+    "`/remind` — Set a reminder",
+    "`/convert` — Convert units or values",
+    "`/info` — Show a member or server summary"
+  ]
+}

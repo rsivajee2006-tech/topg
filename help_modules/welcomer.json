@@ -1,0 +1,10 @@
+{
+  "title": "Welcomer",
+  "emoji": "👋",
+  "description": "Welcome and goodbye messages.",
+  "commands": [
+    "`/welcome setup` — Configure welcome text",
+    "`/goodbye setup` — Configure goodbye text",
+    "`/joinroles` — Manage join roles"
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "title": "Giveaway",
+  "emoji": "🎁",
+  "description": "Create and manage giveaways.",
+  "commands": [
+    "`/gstart` — Start a giveaway",
+    "`/greroll` — Reroll a winner",
+    "`/gend` — End a giveaway"
+  ]
+}

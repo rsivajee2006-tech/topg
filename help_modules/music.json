@@ -1,0 +1,10 @@
+{
+  "title": "Music",
+  "emoji": "🎵",
+  "description": "Audio playback and queue controls.",
+  "commands": [
+    "`/play` — Play a song",
+    "`/pause` — Pause the queue",
+    "`/skip` — Skip the current song"
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "title": "VoiceMaster",
+  "emoji": "🎧",
+  "description": "Advanced voice channel management.",
+  "commands": [
+    "`/vm config` — Setup voice master settings",
+    "`/vm limit` — Set voice limits",
+    "`/vm autoset` — Auto-configure voice rooms"
+  ]
+}

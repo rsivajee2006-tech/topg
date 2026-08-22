@@ -1,0 +1,10 @@
+{
+  "title": "Autoresponder",
+  "emoji": "💬",
+  "description": "Replies triggered by keywords and messages.",
+  "commands": [
+    "`/ar add` — Create a trigger",
+    "`/ar list` — View saved autoresponses",
+    "`/ar remove` — Delete a trigger"
+  ]
+}

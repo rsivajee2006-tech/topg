@@ -1,0 +1,10 @@
+{
+  "title": "AutoMod",
+  "emoji": "⚙️",
+  "description": "Automatic moderation rules and filtering.",
+  "commands": [
+    "`/automod add` — Add an automod rule",
+    "`/automod list` — List active rules",
+    "`/automod remove` — Remove a rule"
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "title": "Ticket",
+  "emoji": "🎫",
+  "description": "Support ticket creation and management.",
+  "commands": [
+    "`/ticket new` — Open a support ticket",
+    "`/ticket close` — Close a ticket",
+    "`/ticket list` — View active tickets"
+  ]
+}

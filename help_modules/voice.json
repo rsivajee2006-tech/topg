@@ -1,0 +1,10 @@
+{
+  "title": "Voice",
+  "emoji": "🔊",
+  "description": "Voice status and live voice controls.",
+  "commands": [
+    "`/vc add` — Set a channel voice status",
+    "`/vc remove` — Remove a voice status",
+    "`/vc list` — Show all tracked voice channels"
+  ]
+}

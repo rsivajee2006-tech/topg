@@ -1,0 +1,10 @@
+{
+  "title": "Leaderboard",
+  "emoji": "🏆",
+  "description": "Ranks, scores, and activity tracking.",
+  "commands": [
+    "`/lb` — View the leaderboard",
+    "`/top` — Show top members",
+    "`/reward` — Claim a leaderboard reward"
+  ]
+}

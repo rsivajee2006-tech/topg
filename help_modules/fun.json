@@ -1,0 +1,10 @@
+{
+  "title": "Fun",
+  "emoji": "🎉",
+  "description": "Entertainment, reactions, and fun commands.",
+  "commands": [
+    "`/meme` — Send a random meme",
+    "`/fact` — Show a random fact",
+    "`/8ball` — Ask the magic 8-ball"
+  ]
+}

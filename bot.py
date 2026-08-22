@@ -54,11 +54,7 @@ def save_config(config):
 config = load_config()
 
 async def get_prefix(bot, message):
-    default_prefixes = [PREFIX, "!!", "!"]
-    no_prefix_users = config.get("no_prefix_users", [])
-    if message.author.id in no_prefix_users:
-        return ["", PREFIX, "!!", "!"]
-    return default_prefixes
+    return PREFIX
 
 # Initialize bot
 intents = discord.Intents.default()
@@ -67,8 +63,9 @@ intents.members = True
 intents.presences = True  # Required to read member online/idle/dnd status
 intents.voice_states = True  # Required to detect voice join/leave/move updates immediately
 
+# Allow commands to be invoked with the configured PREFIX or by mentioning the bot.
 bot = commands.Bot(
-    command_prefix=get_prefix,
+    command_prefix=commands.when_mentioned_or(get_prefix),
     intents=intents,
     help_command=None,
     chunk_guilds_at_startup=True,  # Ensures full member cache on startup
@@ -382,6 +379,8 @@ async def on_member_update(before, after):
 
 @bot.event
 async def on_message(message):
+    # Log incoming messages for debugging
+    print(f"[DEBUG] Received message from {message.author} in {'DM' if not message.guild else message.guild.name}: {message.content}")
     # Ignore bot messages
     if message.author.bot:
         return

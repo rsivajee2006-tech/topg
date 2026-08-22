@@ -1297,13 +1297,9 @@ async def audit_logs(ctx, limit: int = 20):
             )
             embed.add_field(name=f"🔹 {action_name}", value=value_lines, inline=False)
 
-        guild_name = ctx.guild.name if ctx.guild else "DMs"
-        guild_id = str(ctx.guild.id) if ctx.guild else "N/A"
-        server_count = len(ctx.bot.guilds)
         bot_name = ctx.bot.user.name if ctx.bot.user else "Bot"
-        sys_footer = f"Bot: {bot_name} | Servers: {server_count} | Server: {guild_name} ({guild_id})"
         embed.set_footer(
-            text=f"Page {page_num}/{len(pages)} • Bot actions are automatically filtered out • {sys_footer}",
+            text=f"Page {page_num}/{len(pages)} • Bot actions are automatically filtered out • Bot: {bot_name}",
             icon_url=ctx.bot.user.display_avatar.url if ctx.bot.user else None,
         )
         embeds.append(embed)

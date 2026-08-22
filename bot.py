@@ -65,6 +65,7 @@ intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
 intents.presences = True  # Required to read member online/idle/dnd status
+intents.voice_states = True  # Required to detect voice join/leave/move updates immediately
 
 bot = commands.Bot(
     command_prefix=get_prefix,
@@ -332,8 +333,16 @@ async def on_ready():
 
 @bot.event
 async def on_voice_state_update(member, before, after):
-    """Refresh dynamic voice status immediately when users join/leave or move channels."""
+    """Refresh dynamic voice status immediately when users join, leave, or move channels."""
     if not config.get("vc_statuses"):
+        return
+
+    guild = member.guild
+    if guild is None:
+        return
+
+    # Ignore mute/deafen-only changes; only real voice join/leave/move events should refresh counts.
+    if before.channel == after.channel and before.self_mute == after.self_mute and before.self_deaf == after.self_deaf:
         return
 
     for channel_id_str, status in list(config["vc_statuses"].items()):
@@ -341,9 +350,8 @@ async def on_voice_state_update(member, before, after):
             continue
         try:
             channel_id_int = int(channel_id_str)
-            guild = member.guild
             ch = bot.get_channel(channel_id_int)
-            if guild is None or ch is None or ch.guild.id != guild.id:
+            if ch is None or ch.guild.id != guild.id:
                 continue
             resolved_status = resolve_vc_placeholders(status, guild)
             await set_voice_status(channel_id_int, resolved_status)

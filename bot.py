@@ -732,78 +732,249 @@ async def add_serverbanner_error(ctx, error):
     else:
         await send_rich_reply(ctx, "❌ Error", f"An error occurred: {error}")
 
+MODULES = {
+    "antinuke": {
+        "title": "Antinuke",
+        "emoji": "🛡️",
+        "description": "Protection and anti-abuse controls.",
+        "commands": [
+            "`/antinuke` — Manage anti-nuke protections",
+            "`/lockdown` — Quickly enable lockdown protections",
+            "`/modlogs` — View the latest protection events",
+        ],
+    },
+    "automod": {
+        "title": "AutoMod",
+        "emoji": "⚙️",
+        "description": "Automatic moderation rules and filtering.",
+        "commands": [
+            "`/automod` — Manage auto moderation rules",
+            "`/filter` — Configure spam and word filters",
+            "`/warns` — View recent moderation warnings",
+        ],
+    },
+    "automations": {
+        "title": "Automations",
+        "emoji": "🤖",
+        "description": "Useful scheduled and scripted tasks.",
+        "commands": [
+            "`/automation add` — Add a new automation",
+            "`/automation list` — View automation jobs",
+            "`/automation remove` — Remove an automation",
+        ],
+    },
+    "autoresponder": {
+        "title": "Autoresponder",
+        "emoji": "💬",
+        "description": "Replies triggered by keywords and messages.",
+        "commands": [
+            "`/ar add` — Create a trigger",
+            "`/ar list` — View saved autoresponses",
+            "`/ar remove` — Delete a trigger",
+        ],
+    },
+    "custom": {
+        "title": "Custom",
+        "emoji": "🧩",
+        "description": "Custom bot settings and personal controls.",
+        "commands": [
+            "`/help` — Open this module selector",
+            "`/dmm` — Toggle DM mention notifications",
+            "`/dmmsetup` — Create a custom DM layout",
+        ],
+    },
+    "fun": {
+        "title": "Fun",
+        "emoji": "🎉",
+        "description": "Entertainment, reactions, and fun commands.",
+        "commands": [
+            "`/meme` — Send a random meme",
+            "`/fact` — Show a random fact",
+            "`/8ball` — Ask the magic 8-ball",
+        ],
+    },
+    "general": {
+        "title": "General",
+        "emoji": "🔧",
+        "description": "Basic commands and useful bot actions.",
+        "commands": [
+            "`/ping` — Check bot latency",
+            "`/help` — Open the help menu",
+            "`/stats` — View bot/server statistics",
+        ],
+    },
+    "giveaway": {
+        "title": "Giveaway",
+        "emoji": "🎁",
+        "description": "Create and manage giveaways.",
+        "commands": [
+            "`/gstart` — Start a giveaway",
+            "`/greroll` — Reroll a winner",
+            "`/gend` — End a giveaway",
+        ],
+    },
+    "leaderboard": {
+        "title": "Leaderboard",
+        "emoji": "🏆",
+        "description": "Ranks, scores, and activity tracking.",
+        "commands": [
+            "`/lb` — View the leaderboard",
+            "`/top` — Show top members",
+            "`/reward` — Claim a leaderboard reward",
+        ],
+    },
+    "logging": {
+        "title": "Logging",
+        "emoji": "📝",
+        "description": "Server action and event logging.",
+        "commands": [
+            "`/audit logs` — View recent server events",
+            "`/modlogs` — View moderation logs",
+            "`/settings logs` — Configure logging options",
+        ],
+    },
+    "moderation": {
+        "title": "Moderation",
+        "emoji": "🛑",
+        "description": "User moderation and server safety tools.",
+        "commands": [
+            "`/ban` — Ban a member",
+            "`/kick` — Kick a member",
+            "`/mute` — Temporarily mute a user",
+        ],
+    },
+    "music": {
+        "title": "Music",
+        "emoji": "🎵",
+        "description": "Audio playback and queue controls.",
+        "commands": [
+            "`/play` — Play a song",
+            "`/pause` — Pause the queue",
+            "`/skip` — Skip the current song",
+        ],
+    },
+    "permit": {
+        "title": "Permit",
+        "emoji": "✅",
+        "description": "Member access and trust requests.",
+        "commands": [
+            "`/permit add` — Allow a user",
+            "`/permit list` — View permitted users",
+            "`/permit remove` — Remove a permit",
+        ],
+    },
+    "pfp": {
+        "title": "Pfp",
+        "emoji": "🖼️",
+        "description": "Profile-picture and avatar tools.",
+        "commands": [
+            "`/pfp set` — Set a profile image",
+            "`/pfp reset` — Reset the avatar",
+            "`/pfp view` — View the current avatar",
+        ],
+    },
+    "reactionroles": {
+        "title": "Reaction Roles",
+        "emoji": "💠",
+        "description": "Role assignment through reaction buttons.",
+        "commands": [
+            "`/rr add` — Add a reaction role",
+            "`/rr remove` — Remove a reaction role",
+            "`/rr list` — Display configured roles",
+        ],
+    },
+    "ticket": {
+        "title": "Ticket",
+        "emoji": "🎫",
+        "description": "Support ticket creation and management.",
+        "commands": [
+            "`/ticket new` — Open a support ticket",
+            "`/ticket close` — Close a ticket",
+            "`/ticket list` — View active tickets",
+        ],
+    },
+    "utility": {
+        "title": "Utility",
+        "emoji": "🛠️",
+        "description": "Useful admin, status, and utility tools.",
+        "commands": [
+            "`/remind` — Set a reminder",
+            "`/convert` — Convert units or values",
+            "`/info` — Show a member or server summary",
+        ],
+    },
+    "voice": {
+        "title": "Voice",
+        "emoji": "🔊",
+        "description": "Voice status and live voice controls.",
+        "commands": [
+            "`/vc add` — Set a channel voice status",
+            "`/vc remove` — Remove a voice status",
+            "`/vc list` — Show all tracked voice channels",
+        ],
+    },
+    "voicemaster": {
+        "title": "VoiceMaster",
+        "emoji": "🎧",
+        "description": "Advanced voice channel management.",
+        "commands": [
+            "`/vm config` — Setup voice master settings",
+            "`/vm limit` — Set voice limits",
+            "`/vm autoset` — Auto-configure voice rooms",
+        ],
+    },
+    "welcomer": {
+        "title": "Welcomer",
+        "emoji": "👋",
+        "description": "Welcome and goodbye messages.",
+        "commands": [
+            "`/welcome setup` — Configure welcome text",
+            "`/goodbye setup` — Configure goodbye text",
+            "`/joinroles` — Manage join roles",
+        ],
+    },
+}
+
+
+def get_help_embed(module_key: str = "general"):
+    module = MODULES.get(module_key, MODULES["general"])
+    embed = discord.Embed(
+        title=f"{module['emoji']} {module['title']}",
+        description=module['description'],
+        color=0xFFFFFF,
+    )
+    embed.add_field(name="Commands", value="\n".join(module["commands"]), inline=False)
+    embed.set_footer(text="Select a module from the dropdown below")
+    return embed
+
+
+class HelpModuleSelect(discord.ui.Select):
+    def __init__(self):
+        options = [
+            discord.SelectOption(
+                label=info["title"],
+                value=key,
+                emoji=info["emoji"],
+                description=info["description"],
+            )
+            for key, info in MODULES.items()
+        ]
+        super().__init__(placeholder="Select Module From Here", options=options, min_values=1, max_values=1)
+
+    async def callback(self, interaction: discord.Interaction):
+        selected = self.values[0]
+        await interaction.response.edit_message(embed=get_help_embed(selected), view=self.view)
+
+
+class HelpModuleView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=180)
+        self.add_item(HelpModuleSelect())
+
+
 @bot.command(name="help", aliases=["h"])
 async def custom_help(ctx):
-    p = ctx.prefix
-    embed = discord.Embed(
-        title="📖 Command Help",
-        description="Here are all available commands.",
-        color=0x111111,
-    )
-    embed.set_thumbnail(url=ctx.bot.user.display_avatar.url)
-
-    embed.add_field(
-        name="🏓 General",
-        value=(
-            f"• `{p}ping` — Show bot latency\n"
-            f"• `{p}help` — Show this help panel\n"
-            f"• `{p}h` — Alias for help"
-        ),
-        inline=False,
-    )
-
-    embed.add_field(
-        name="🔊 Voice Channel Status",
-        value=(
-            f"• `{p}vc add <channel_id> <text>` — Set a VC status\n"
-            f"• `{p}vc remove <channel_id>` — Remove auto-refresh\n"
-            f"• `{p}vc list` — List active VC updates\n"
-            f"• Tokens: `{{totalusers}}` `{{onlineusers}}` `{{activevc}}` `{{vcusers}}`\n"
-            f"• Static text refreshes every 5 minutes"
-        ),
-        inline=False,
-    )
-
-    embed.add_field(
-        name="👑 Owner / Extra Owner",
-        value=(
-            f"• `{p}pgrant <user> <server_id>` — Grant premium access\n"
-            f"• `{p}noprefix <user> [on/off]` — Toggle prefix-free use\n"
-            f"• `{p}botstats` — View all connected servers\n"
-            f"• `{p}leaveserver [server_id]` — Remove the bot from a guild\n"
-            f"• `{p}add extraowner <user>` — Add extra owner\n"
-            f"• `{p}add nickname <name>` — Rename the bot\n"
-            f"• `{p}add serveravatar <url>` — Set a custom avatar\n"
-            f"• `{p}add serverbanner <url>` — Set a custom banner\n"
-            f"• `{p}dmm <on/off>` — Toggle DM mention alerts\n"
-            f"• `{p}dmmsetup` — Set custom DM layout\n"
-            f"• `{p}dmmreset` — Reset default DM layout"
-        ),
-        inline=False,
-    )
-
-    embed.add_field(
-        name="📋 Audit Log",
-        value=(
-            f"• `{p}audit logs [limit]` — View recent actions\n"
-            f"• Default limit: 20 • Max: 50"
-        ),
-        inline=False,
-    )
-
-    DEV_USER_ID = 1495697271071703121
-    try:
-        dev_user = await ctx.bot.fetch_user(DEV_USER_ID)
-        dev_icon = dev_user.display_avatar.url
-        dev_name = f"Dev: {dev_user.name}"
-    except Exception:
-        dev_icon = ctx.bot.user.display_avatar.url
-        dev_name = "Dev: sivajee"
-
-    embed.set_footer(text="Dev by sivajee", icon_url=dev_icon)
-    embed.set_author(name=dev_name, icon_url=dev_icon)
-
-    await ctx.send(embed=embed)
+    await ctx.send(embed=get_help_embed("general"), view=HelpModuleView())
 
 @bot.group(name="vc", invoke_without_command=True)
 async def vc(ctx):

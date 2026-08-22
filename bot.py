@@ -85,11 +85,15 @@ async def setup_hook():
     runner = web.AppRunner(app)
     await runner.setup()
     
-    port_str = os.getenv("PORT", "8080")
+    # Render.com provides the PORT environment variable for web services.
+    # It is mandatory to bind to this port; falling back to a default can cause deployment failures.
+    port_str = os.getenv("PORT")
+    if not port_str:
+        raise RuntimeError("PORT environment variable is not set. A web service must bind to the provided port.")
     try:
-        port = int(port_str) if port_str else 8080
+        port = int(port_str)
     except ValueError:
-        port = 8080
+        raise RuntimeError(f"Invalid PORT value: {port_str}. Must be an integer.")
     site = web.TCPSite(runner, '0.0.0.0', port)
     await site.start()
     print(f"HTTP server started on port {port}")

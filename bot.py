@@ -794,6 +794,8 @@ def build_command_help_embed(ctx):
         f"• `{prefix}dmmreset` — Reset default DM layout"
     )
 
+    premium = "• Join our Discord: https://discord.gg/P8m2uDstSu\n• Chat ID: 1540654210692157452"
+
     audit = (
         f"• `{prefix}audit logs [limit]` — View recent actions\n"
         "• Default limit: 20 • Max: 50"
@@ -802,6 +804,7 @@ def build_command_help_embed(ctx):
     embed.add_field(name="🔎 General", value=general, inline=False)
     embed.add_field(name="🔊 Voice Channel Status", value=voice, inline=False)
     embed.add_field(name="👑 Owner / Extra Owner", value=owner, inline=False)
+    embed.add_field(name="💎 Premium Access", value=premium, inline=False)
     embed.add_field(name="📋 Audit Log", value=audit, inline=False)
 
     embed.set_footer(text="Dev by sivajee")

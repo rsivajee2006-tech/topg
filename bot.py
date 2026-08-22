@@ -347,8 +347,7 @@ async def on_voice_state_update(member, before, after):
         return
 
     for channel_id_str, status in list(config["vc_statuses"].items()):
-        if not has_dynamic_placeholders(status):
-            continue
+        # Update all VC status channels immediately on voice changes, regardless of placeholders
         try:
             channel_id_int = int(channel_id_str)
             ch = bot.get_channel(channel_id_int)
@@ -357,7 +356,7 @@ async def on_voice_state_update(member, before, after):
             resolved_status = resolve_vc_placeholders(status, guild)
             await set_voice_status(channel_id_int, resolved_status)
         except Exception as e:
-            print(f"[AutoVC] Immediate dynamic update failed for {channel_id_str}: {e}")
+            print(f"[AutoVC] Immediate update failed for {channel_id_str}: {e}")
 
 @bot.event
 async def on_member_update(before, after):

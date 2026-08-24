@@ -53,6 +53,9 @@ def save_config(config):
 
 config = load_config()
 
+# Optional log channel ID for activity logs (set via config or manually)
+# Example: config["log_channel_id"] = 123456789012345678
+
 async def get_prefix(bot, message):
     return PREFIX
 
@@ -166,6 +169,18 @@ def is_owner_or_extra():
         return True
     return commands.check(predicate)
 
+# Helper to log activity to console and optionally a Discord channel
+async def log_activity(message: str):
+    print(f"[ACTIVITY] {message}")
+    channel_id = config.get("log_channel_id")
+    if channel_id:
+        ch = bot.get_channel(int(channel_id))
+        if ch:
+            try:
+                await ch.send(f"[Activity] {message}")
+            except Exception as e:
+                print(f"Failed to send activity log to channel {channel_id}: {e}")
+
 def resolve_vc_placeholders(status: str, guild: Optional[discord.Guild]) -> str:
     """Replaces dynamic placeholders in a VC status string.
 
@@ -233,8 +248,17 @@ async def set_voice_status(channel_id: int, status: str):
                     "• The bot has **View Channel** permission on that VC"
                 ), True
             elif resp.status == 429:
-                data = await resp.json()
-                retry_after = data.get("retry_after", 5)
+                # Discord may return JSON or HTML on rate limit. Attempt JSON first.
+                try:
+                    data = await resp.json()
+                    retry_after = data.get("retry_after", 5)
+                except Exception:
+                    # Fallback: use Retry-After header if present, else default.
+                    retry_after_header = resp.headers.get("Retry-After")
+                    try:
+                        retry_after = float(retry_after_header)
+                    except Exception:
+                        retry_after = 5
                 print(f"Rate limited. Retrying after {retry_after}s")
                 await asyncio.sleep(retry_after)
                 return await set_voice_status(channel_id, status)
@@ -382,6 +406,109 @@ async def on_member_update(before, after):
 
 @bot.event
 async def on_message(message):
+    # Ignore all bot messages, including the bot itself
+    if message.author.bot:
+        return
+
+    # Log incoming messages for debugging
+    print(f"[DEBUG] Received message from {message.author} in {'DM' if not message.guild else message.guild.name}: {message.content}")
+
+    # Process custom mention handling first
+    if message.mentions:
+        if config.get("enabled", True):
+            guild_id = message.guild.id if message.guild else "DM"
+            current_time = time.time()
+            for mentioned_user in message.mentions:
+                if mentioned_user.bot:
+                    continue
+                cooldown_key = f"{guild_id}_{mentioned_user.id}"
+                if cooldown_key not in cooldowns or (current_time - cooldowns[cooldown_key]) >= COOLDOWN_TIME:
+                    try:
+                        custom_embed_config = config.get("custom_embed")
+                        custom_msg = config.get("custom_message")
+                        layout = discord.ui.LayoutView()
+                        container = discord.ui.Container(accent_color=discord.Color.dark_theme())
+                        if custom_embed_config:
+                            def format_str(s):
+                                if not s:
+                                    return ""
+                                return (s.replace("{usermention}", message.author.mention)
+                                         .replace("{usermetion}", message.author.mention)
+                                         .replace("{username}", message.author.name)
+                                         .replace("{server}", message.guild.name if message.guild else "DMs")
+                                         .replace("{servericon}", message.guild.icon.url if message.guild and message.guild.icon else "")
+                                         .replace("{channel}", message.channel.name if getattr(message.channel, "name", None) else "DMs")
+                                         .replace("{message}", message.content)
+                                         .replace("{authoravatar}", message.author.avatar.url if message.author.avatar else ""))
+                            title = format_str(custom_embed_config.get("title"))
+                            desc = format_str(custom_embed_config.get("description"))
+                            content = format_str(custom_embed_config.get("content"))
+                            thumb_url = format_str(custom_embed_config.get("thumbnail"))
+                            img_url = format_str(custom_embed_config.get("image"))
+                            footer_text = format_str(custom_embed_config.get("footer"))
+                            if title:
+                                container.add_item(discord.ui.TextDisplay(f"# {title}"))
+                            if thumb_url and thumb_url.startswith("http"):
+                                section = discord.ui.Section(accessory=discord.ui.Thumbnail(media=thumb_url))
+                                if desc:
+                                    section.add_item(discord.ui.TextDisplay(desc))
+                                container.add_item(section)
+                            elif desc:
+                                container.add_item(discord.ui.TextDisplay(desc))
+                            if img_url and img_url.startswith("http"):
+                                gallery = discord.ui.MediaGallery()
+                                gallery.add_item(media=img_url)
+                                container.add_item(gallery)
+                            if footer_text:
+                                container.add_item(discord.ui.Separator())
+                                container.add_item(discord.ui.TextDisplay(f"_{footer_text}_"))
+                            layout.add_item(container)
+                            await mentioned_user.send(content=content if content else None, view=layout)
+                        elif custom_msg:
+                            formatted_msg = custom_msg.format(
+                                server=message.guild.name if message.guild else "DMs",
+                                channel=message.channel.name if getattr(message.channel, "name", None) else "DMs",
+                                author=message.author.mention,
+                                message=message.content
+                            )
+                            await mentioned_user.send(formatted_msg)
+                        else:
+                            server_name = message.guild.name if message.guild else "DMs"
+                            container.add_item(discord.ui.TextDisplay(f"**Tagged in : {server_name}**"))
+                            container.add_item(discord.ui.Separator())
+                            thumbnail_url = message.author.avatar.url if message.author.avatar else None
+                            if thumbnail_url:
+                                section = discord.ui.Section(accessory=discord.ui.Thumbnail(media=thumbnail_url))
+                            else:
+                                section = discord.ui.Section()
+                            channel_mention = message.channel.mention if getattr(message.channel, 'mention', None) else 'DMs'
+                            section.add_item(discord.ui.TextDisplay(
+                                f"**Notification**\nYou were tagged in {server_name}!\n\n"
+                                f"**Tagged by :** {message.author.mention}\n\n"
+                                f"**Channel :** {server_name} → {channel_mention}\n"
+                                f"**Message :**\n> {message.content}"))
+                            container.add_item(section)
+                            layout.add_item(container)
+                            await mentioned_user.send(view=layout)
+                        cooldowns[cooldown_key] = current_time
+                        print(f"Sent DM notification to {mentioned_user.name} for mention in {message.guild.name if message.guild else 'DMs'}.")
+                    except discord.Forbidden:
+                        print(f"Could not send DM to {mentioned_user.name}. Please check privacy settings.")
+                    except Exception as e:
+                        print(f"Error sending DM to {mentioned_user.name}: {e}")
+    # Process commands after custom handling only if there were no mentions
+    ctx = await bot.get_context(message)
+    if ctx.valid:
+        return
+    # If there were mentions, we already handled them above and should not continue
+    if message.mentions:
+        return
+    # Process commands for non-mention messages
+    await bot.process_commands(message)
+    # If this was a command, no further processing needed
+    ctx = await bot.get_context(message)
+    if ctx.valid:
+        return
     # Log incoming messages for debugging
     print(f"[DEBUG] Received message from {message.author} in {'DM' if not message.guild else message.guild.name}: {message.content}")
     # Ignore bot messages
@@ -762,52 +889,55 @@ def build_command_help_embed(ctx):
     embed = discord.Embed(
         title="Command Help",
         description="Here are all available commands.",
-        color=0x111111,
+        color=0xFFFFFF,
     )
 
-    embed.set_author(name="Dev: sivaz_jee")
+    avatar_url = None
+    if getattr(ctx, "guild", None) and getattr(ctx.guild, "me", None):
+        avatar_url = ctx.guild.me.display_avatar.url
+    elif getattr(ctx.bot, "user", None):
+        avatar_url = ctx.bot.user.display_avatar.url
 
-    # Use bullet points and inline code for command names for consistent alignment
+    if avatar_url:
+        embed.set_thumbnail(url=avatar_url)
+
     general = (
         f"• `{prefix}ping` — Show bot latency\n"
-        f"• `{prefix}help` — Show this help panel\n"
-        f"• `{prefix}h` — Alias for help"
+        f"• `{prefix}help` — Show this help panel (alias: `{prefix}h`)\n"
+        f"• `{prefix}stats` — Show bot and server stats"
     )
 
     voice = (
         f"• `{prefix}vc add <channel_id> <text>` — Set a VC status\n"
         f"• `{prefix}vc remove <channel_id>` — Remove auto-refresh\n"
-        f"• `{prefix}vc list` — List active VC updates\n\n"
-        "• Tokens: `{totalusers}` `{onlineusers}` `{activevc}` `{vcusers}`\n"
+        f"• `{prefix}vc list` — List all auto-refreshed VCs\n\n"
+        "• Dynamic placeholders: `{totalusers}` `{onlineusers}` `{activevc}` `{vcusers}`\n"
         "• Static text refreshes every 5 minutes"
     )
 
     owner = (
         f"• `{prefix}pgrant <user> <server_id>` — Grant premium access\n"
-        f"• `{prefix}noprefix <user> [on/off]` — Toggle prefix-free use\n"
-        f"• `{prefix}botstats` — View all connected servers\n"
-        f"• `{prefix}leaveserver [server_id]` — Remove the bot from a guild\n\n"
-        f"• `{prefix}add extraowner <user>` — Add extra owner\n"
-        f"• `{prefix}add nickname <name>` — Rename the bot\n"
-        f"• `{prefix}add serveravatar <url>` — Set a custom avatar\n"
-        f"• `{prefix}add serverbanner <url>` — Set a custom banner\n\n"
-        f"• `{prefix}dmm <on/off>` — Toggle DM mention alerts\n"
-        f"• `{prefix}dmmsetup` — Set custom DM layout\n"
-        f"• `{prefix}dmmreset` — Reset default DM layout"
+        f"• `{prefix}noprefix <user> [on/off]` — Toggle prefix-free command access for a user\n"
+        f"• `{prefix}botstats` — View all servers where the bot is added\n"
+        f"• `{prefix}leaveserver [server_id]` — Leave a server (defaults to current server; Bot Owner only)\n\n"
+        f"• `{prefix}add extraowner <user>` — Add an extra owner\n"
+        f"• `{prefix}add nickname <name>` — Change the bot's nickname in this server\n"
+        f"• `{prefix}add serveravatar <url>` — Change the bot's avatar\n"
+        f"• `{prefix}add serverbanner <url>` — Change the bot's banner\n\n"
+        f"• `{prefix}dmm <on/off>` — Toggle DM mention notifications\n"
+        f"• `{prefix}dmmsetup` — Set up a custom DM message layout\n"
+        f"• `{prefix}dmmreset` — Reset DM layout to default"
     )
-
-    premium = "• Join our Discord: https://discord.gg/P8m2uDstSu\n• Chat ID: 1540654210692157452"
 
     audit = (
         f"• `{prefix}audit logs [limit]` — View recent actions\n"
         "• Default limit: 20 • Max: 50"
     )
 
-    embed.add_field(name="🔎 General", value=general, inline=False)
-    embed.add_field(name="🔊 Voice Channel Status", value=voice, inline=False)
-    embed.add_field(name="👑 Owner / Extra Owner", value=owner, inline=False)
-    embed.add_field(name="💎 Premium Access", value=premium, inline=False)
-    embed.add_field(name="📋 Audit Log", value=audit, inline=False)
+    embed.add_field(name="General", value=general, inline=False)
+    embed.add_field(name="Voice Channel Status", value=voice, inline=False)
+    embed.add_field(name="Owner / Extra Owner", value=owner, inline=False)
+    embed.add_field(name="Audit Log", value=audit, inline=False)
 
     embed.set_footer(text="Dev by sivajee")
     return embed
